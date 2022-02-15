@@ -25,8 +25,7 @@ with open ('posiciones_tyczki.dat','r') as posicionesEstacas:
     for line in posicionesEstacas.readlines():
         posEstaca.append((line.split()[0],line.split()[1],line.split()[2]))
 
-
-grad = np.gradient((xDemGrid,yDemGrid,zDemGrid))
+# grad = np.gradient((xDemGrid,yDemGrid,zDemGrid))
 
 
 # grid = griddata((xSpeedGrid,ySpeedGrid), absSpeed, (xDemGrid,yDemGrid), method= 'cubic')
@@ -42,7 +41,7 @@ distMatrix = {
 def interpolate():
     #Weighted average distance interpolation
     with open('vel_interpolada.dat','w') as outputSpeed:
-        for i, value in enumerate(xDemGrid,14574):
+        for i, value in enumerate(xDemGrid):
             coordXdem=float(xDemGrid[i])
             coordYdem=float(yDemGrid[i])
             distmin=[0.0,0.0,0.0]
