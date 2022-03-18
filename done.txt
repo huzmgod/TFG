@@ -1,0 +1,2 @@
+- interpolación grid en DEM para velocidades por ponderaciones con el inverso del cuadrado de la distancia
+- cálculo de
