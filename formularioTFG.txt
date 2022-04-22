@@ -6,7 +6,8 @@ se trabaja actualmente, es necesario contar con series temporales de mapas de
 velocidades en superficie que cubran todo el glaciar, que es un producto con el 
 que es difícil contar.
 En este proyecto se combinará estadística bayesiana con interpolación geoestadística 
-para estimar mapas de velocidades en la superficie del glaciar Hansbreen, partiendo de 
+para estimar la evolución de las velocidades en superficie del glaciar Hansbreen(Svalbard),
+ partiendo de 
 un mapa en una fecha concreta obtenido por interferometría a partir de datos de satélite
-y usando datos de velocidad superficial medidos in situ en una red de estacas desplagada
+y usando datos de velocidad superficial medidos in situ en una red de estacas desplegada
 en la superficie del mismo.  
