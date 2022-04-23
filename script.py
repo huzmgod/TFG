@@ -111,14 +111,19 @@ def interpolate():
                     if(dist <0.5):
                         estimatedSpeed = speed[i]
                         closePoint = True
+                        continue 
                     else:
                         denom += 1/dist**2
-                    # if point from speed grid is not so close to point on DEM:
-                if(closePoint == False): print(f"{x} {y} {distmin} {p}")
                 
+                # if point from speed grid is not so close to point on DEM:
+                # there are no close points
+                if(closePoint == False): 
+                    for i, dist in enumerate(distmin):
+                    # if distmin[0] < 0.5 => dist ~= 0, then no need to interpolate the grid
+                        estimatedSpeed += 1/dist**2/denom*speed[i]
+                        # print(f"{x} {y} {distmin} {p}")
                 
-                print("writing")
-                outputSpeed.write(f"{coordXdem}  {coordYdem}  {p}  {distmin} {speed}  {estimatedSpeed} {closePoint}\n")
+                outputSpeed.write(f"{coordXdem}  {coordYdem}  {p}  {distmin}  {speed}  {estimatedSpeed} \n")
 
 def getSpeedMap():
     with open ('dem_utm_wgs1_clipped_Hans_rgi60_50m_recortado_blanked.dat','r') as demGrid:
@@ -146,13 +151,43 @@ with open ('posiciones_tyczki.dat','r') as posicionesEstacas:
 
 def gradient():
     #Check gradient output 
-    gradx, grady = np.gradient(zDemGrid, yDemGrid, xDemGrid)
-    with open("gradient_x_dem.dat",'ab') as gradXFile:
-        with open("gradient_y_dem.dat",'ab') as gradYFile:
-            np.savetxt(gradXFile,gradx)
-            np.savetxt(gradYFile,grady)
+    gradx, grady = np.gradient(zDemGrid)
+    with open("gradient_x_dem.dat",'w') as gradXFile:
+        with open("gradient_y_dem.dat",'w') as gradYFile:
+            np.savetxt(gradXFile,gradx, fmt='%.4f')
+            np.savetxt(gradYFile,grady, fmt='%.4f')
         
     # print(f"{gradx} \n {grady}")
+
+def angleCalc():
+    #Calculate angle between gradient components
+    
+    with open("gradient_x_dem.dat",'r') as gradXFile:
+        with open("gradient_y_dem.dat",'r') as gradYFile:
+                with open("angle_dem.dat",'w') as angleFile:
+                    gradx = np.loadtxt(gradXFile)
+                    grady = np.loadtxt(gradYFile)
+
+                    for i, _ in enumerate(gradx):
+                        xValue = gradx[i,i]
+                        yValue = grady[i,i]
+                        hypotenuse = math.sqrt(xValue**2 + yValue**2)
+                        cosine = math.acos(xValue/hypotenuse)
+                        sine = math.asin(yValue/hypotenuse)
+                        angle = math.degrees(cosine)
+
+                        if(xValue < 0 and yValue < 0):
+                            angle = math.atan(yValue/xValue)+math.pi
+                        if(xValue > 0 and yValue < 0):
+                            angle = math.atan(yValue/xValue)+math.pi
+                        angle = math.atan2(yValue,xValue)
+                        angleFile.write(f"{angle}\n")
+                    angle = np.arctan2(grady,gradx)
+                    np.savetxt(angleFile,angle, fmt='%.4f')
+                
+    
+
+
 
 
 distMatrix = {
@@ -166,7 +201,9 @@ distMatrix = {
     
 def main():
     
-    interpolate()
+    # interpolate()
+    gradient()
+    angleCalc()
     # getSpeedMap()
 
     # fig = plt.figure(figsize=(6,6))
