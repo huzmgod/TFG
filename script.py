@@ -36,7 +36,7 @@ with open ('dem_utm_wgs1_clipped_Hans_rgi60_50m_recortado_blanked.dat','r') as d
                     value= line.split()
                     yIndex = yStartingValue
                     y = int((float(value[0]) - xStartingValue)/GRID_DIST)
-                    x = 328 - int((float(value[1]) - yStartingValue)/GRID_DIST)
+                    x = 328 - int((float(value[1]) - yStartingValue)/GRID_DIST)  # descendent order from greater y to lower y
                     zDemGrid[x, y] = value[2]
                 for row, value in enumerate(zDemGrid):
                     
@@ -158,29 +158,49 @@ def gradient():
 
 def angleCalc():
     #Calculate angle between gradient components
-    
-    with open("gradient_x_dem.dat",'r') as gradXFile:
-        with open("gradient_y_dem.dat",'r') as gradYFile:
-                with open("angle_dem.dat",'w') as angleFile:
-                    gradx = np.loadtxt(gradXFile)
-                    grady = np.loadtxt(gradYFile)
+    with open ("vel_interpolada_3.dat",'r') as speedValues:
+        with open("gradient_x_dem.dat",'r') as gradXFile:
+            with open("gradient_y_dem.dat",'r') as gradYFile:
+                    with open("speed_components.dat",'w') as speedFile:
+                        gradx = np.loadtxt(gradXFile)
+                        grady = np.loadtxt(gradYFile)
+                        
+                        y = yFinalValue
+                        
+                        for i, _ in enumerate(gradx):
+                            x = xStartingValue
+                            for j, _ in enumerate(gradx[i]):
 
-                    for i, _ in enumerate(gradx):
-                        xValue = gradx[i,i]
-                        yValue = grady[i,i]
-                        hypotenuse = math.sqrt(xValue**2 + yValue**2)
-                        cosine = math.acos(xValue/hypotenuse)
-                        sine = math.asin(yValue/hypotenuse)
-                        angle = math.degrees(cosine)
+                                try:                   
+                                    xValue = gradx[i,j]
+                                    yValue = grady[i,j]
+                                    
+                                    hypotenuse = math.sqrt(xValue**2 + yValue**2)
+                                    cosine = xValue/hypotenuse
 
-                        if(xValue < 0 and yValue < 0):
-                            angle = math.atan(yValue/xValue)+math.pi
-                        if(xValue > 0 and yValue < 0):
-                            angle = math.atan(yValue/xValue)+math.pi
-                        angle = math.atan2(yValue,xValue)
-                        angleFile.write(f"{angle}\n")
-                    angle = np.arctan2(grady,gradx)
-                    np.savetxt(angleFile,angle, fmt='%.4f')
+                                    sine = yValue/hypotenuse
+                                    # angle = math.atan(yValue/xValue)
+                                    speed = 0.0
+
+                                    for line in speedValues.readlines():
+                                        if(float(line.split('  ')[0]) == x and float(line.split('  ')[1]) == y): #if coordinates are the same
+                                            speed = float(line.split('  ')[5])
+                                            print(line.split('  ')[0])
+                                            print(x)
+                                    
+                                            print(line.split('  ')[1])
+                                            print(y)
+                                            print(speed)
+                                
+                                    
+                                    speedFile.write(f"{x}  {y}  {speed*cosine}  {speed*sine}\n")
+                                    x += GRID_DIST
+                                except(RuntimeWarning):
+                                    x += GRID_DIST
+
+                                    
+                            y -= GRID_DIST
+
                 
     
 
@@ -198,9 +218,9 @@ distMatrix = {
     
 def main():
     
-    interpolate()
+    # interpolate()
     # gradient()
-    #angleCalc()
+    angleCalc()
     # getSpeedMap()
 
     # fig = plt.figure(figsize=(6,6))
