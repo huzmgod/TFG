@@ -1,7 +1,4 @@
 import numpy as np
-from mpl_toolkits.mplot3d import axes3d
-from scipy.interpolate import griddata
-import matplotlib.pyplot as plt
 import math
 
 ##########################################################################################
@@ -55,7 +52,7 @@ with open ('dem_utm_wgs1_clipped_Hans_rgi60_50m_recortado_blanked.dat','r') as d
 #### FUNCTION TO INTERPOLATE SPEED GRID INTO DEM GRID ####
 def interpolate():
     #Weighted average distance interpolation
-    with open('vel_interpolada_2.dat','w') as outputSpeed:
+    with open('vel_interpolada_3.dat','w') as outputSpeed:
         for i, x in enumerate(xDemGrid):
             print("change in X")
             for _, y in enumerate(yDemGrid):
@@ -201,9 +198,9 @@ distMatrix = {
     
 def main():
     
-    # interpolate()
-    gradient()
-    angleCalc()
+    interpolate()
+    # gradient()
+    #angleCalc()
     # getSpeedMap()
 
     # fig = plt.figure(figsize=(6,6))
