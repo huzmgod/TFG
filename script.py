@@ -12,6 +12,9 @@ yStartingValue, yFinalValue =  8547775.000, 8564175.000
 ###### GRID SQUARE LENGTH ######
 GRID_DIST = 50
 
+###### SIGN FUNCTION ######
+sign = lambda x: math.copysign(1, x)
+
 ##########################################################################################
 ###############################         GRIDS         ####################################
 ########################################################################################## 
@@ -165,41 +168,42 @@ def angleCalc():
                         gradx = np.loadtxt(gradXFile)
                         grady = np.loadtxt(gradYFile)
                         
-                        y = yFinalValue
                         
-                        for i, _ in enumerate(gradx):
-                            x = xStartingValue
-                            for j, _ in enumerate(gradx[i]):
+                        for line in speedValues.readlines(): 
+                            xCoord = float(line.split('  ')[0])
+                            yCoord = float(line.split('  ')[1])
+                            equalCoords = False
+                            for i, _ in enumerate(gradx):
+                                for j, _ in enumerate(gradx[i]):
+                                    xMatrix = xStartingValue + j*GRID_DIST
+                                    yMatrix = yFinalValue - i*GRID_DIST
+                                    if (xMatrix == xCoord and yMatrix == yCoord):
+                                        equalCoords = True
+                                        xValue = gradx[i,j]
+                                        yValue = grady[i,j]
+                                        xSpeed = 0.0
+                                        ySpeed = 0.0
+                                        speed = float(line.split('  ')[5]) 
+                                        
+                                        hypotenuse = math.sqrt(xValue**2 + yValue**2)
+                                        
+                                                                   
+                                        if(xValue == 0 and yValue != 0):
+                                            ySpeed = speed*sign(yValue)
 
-                                try:                   
-                                    xValue = gradx[i,j]
-                                    yValue = grady[i,j]
-                                    
-                                    hypotenuse = math.sqrt(xValue**2 + yValue**2)
-                                    cosine = xValue/hypotenuse
+                                        elif(yValue == 0 and xValue != 0):
+                                            xSpeed = speed*sign(xValue)
 
-                                    sine = yValue/hypotenuse
-                                    # angle = math.atan(yValue/xValue)
-                                    speed = 0.0
+                                        elif(xValue != 0 and yValue != 0):
+                                            xSpeed = speed*xValue/hypotenuse
+                                            ySpeed = speed*yValue/hypotenuse
 
-                                    for line in speedValues.readlines():
-                                        if(float(line.split('  ')[0]) == x and float(line.split('  ')[1]) == y): #if coordinates are the same
-                                            speed = float(line.split('  ')[5])
-                                            print(line.split('  ')[0])
-                                            print(x)
-                                    
-                                            print(line.split('  ')[1])
-                                            print(y)
-                                            print(speed)
-                                
-                                    
-                                    speedFile.write(f"{x}  {y}  {speed*cosine}  {speed*sine}\n")
-                                    x += GRID_DIST
-                                except(RuntimeWarning):
-                                    x += GRID_DIST
+                                        speedFile.write(f"{xCoord}  {yCoord}  {xMatrix}  {yMatrix}  {xSpeed}  {ySpeed}\n")
+                                        break
+                                if(equalCoords == True):
+                                    break
 
-                                    
-                            y -= GRID_DIST
+                           
 
                 
     
