@@ -125,30 +125,6 @@ def interpolate():
                 
                 outputSpeed.write(f"{coordXdem}  {coordYdem}  {p}  {distmin}  {speed}  {estimatedSpeed} \n")
 
-def getSpeedMap():
-    with open ('dem_utm_wgs1_clipped_Hans_rgi60_50m_recortado_blanked.dat','r') as demGrid:
-        with open ('vel_interpolada.dat','r') as velGrid:
-            with open ('velocidades_superficie_Dem.dat', 'w') as sortedGrid:
-
-                    for line in demGrid.readlines():
-                        value= line.split()
-                        yIndex = yStartingValue
-                        y = int((float(value[0]) - xStartingValue)/GRID_DIST)
-                        x = 328 - int((float(value[1]) - yStartingValue)/GRID_DIST)
-                        zDemGrid[x, y] = value[2]
-                    for row, value in enumerate(zDemGrid):
-                        sortedGrid.write(f"{' '.join(map(str,value))}\n")
-            
-
-posEstaca = []
-with open ('posiciones_tyczki.dat','r') as posicionesEstacas:
-    for line in posicionesEstacas.readlines():
-        posEstaca.append(line.split()[0])
-        posEstaca.append(line.split()[1])
-        posEstaca.append(line.split()[2])
-        posEstaca.append("XXXXXXXXXX")
-
-
 def gradient():
     #Check gradient output 
     gradx, grady = np.gradient(zDemGrid)
@@ -159,7 +135,7 @@ def gradient():
         
     # print(f"{gradx} \n {grady}")
 
-def angleCalc():
+def speedComponentsDem():
     #Calculate angle between gradient components
     with open ("vel_interpolada_3.dat",'r') as speedValues:
         with open("gradient_x_dem.dat",'r') as gradXFile:
@@ -203,30 +179,211 @@ def angleCalc():
                                 if(equalCoords == True):
                                     break
 
-                           
 
-                
+
+def getGradientInStickCoordinates():
+
+    ###### STICKS COORDINATES ######
     
+    with open ('posiciones_tyczki.dat','r') as posicionesEstacas:
+        with open ('gradient_x_dem.dat','r') as gradXFile:
+            with open ('gradient_y_dem.dat', 'r') as gradYFile:
+                with open ('gradient_in_stick.dat', 'w') as gradStickFile:
+                    gradx = np.loadtxt(gradXFile)
+                    grady = np.loadtxt(gradYFile)
+                    
+                    for line in posicionesEstacas.readlines():
+                        distmin = [0.0,0.0,0.0]
+                        xCoord = float(line.split()[0])
+                        yCoord = float(line.split()[1])
+                        p=[(0.0,0.0),(0.0,0.0),(0.0,0.0)] # vector of closest points
+                        denom = 0.0
+                        gradValues = [(0.0,0.0),(0.0,0.0),(0.0,0.0)]
+                        closePoint = False
+                        estimatedGradientX, estimatedGradientY = 0.0, 0.0
+                        for i, _ in enumerate(gradx):
+                            for j, _ in enumerate(gradx[i]):
+                                xMatrix = xStartingValue + j*GRID_DIST
+                                yMatrix = yFinalValue - i*GRID_DIST
+                                dist = math.sqrt((xMatrix-xCoord)**2 + (yMatrix-yCoord)**2)     
+
+                                if(distmin[0]==0): #first entry
+                                    distmin[0]=dist
+                                    p[0]=(xMatrix, yMatrix)
+                                    gradValues[0]=(gradx[i,j],grady[i,j])
+                                elif(dist<distmin[0]): #getting minimum distance
+                                    distmin[2]=distmin[1]
+                                    p[2]=p[1]
+                                    gradValues[2]=gradValues[1]
+                                    distmin[1]=distmin[0]
+                                    p[1]=p[0]
+                                    gradValues[1]=gradValues[0]
+                                    distmin[0]=dist
+                                    p[0]=(xMatrix, yMatrix)
+                                    gradValues[0]=gradx[i,j],grady[i,j]
+                                elif(distmin[1]==0): #second entry
+                                    distmin[1]=dist
+                                    p[1]=(xMatrix, yMatrix)
+                                    gradValues[1]=gradx[i,j],grady[i,j]
+                                elif(dist<distmin[1]): #getting minimum distance
+                                    distmin[2]=distmin[1]
+                                    p[2]=p[1]
+                                    gradValues[2]=gradValues[1]
+                                    distmin[1]=dist
+                                    p[1]=(xMatrix, yMatrix)
+                                    gradValues[1]=gradx[i,j],grady[i,j]
+                                elif(distmin[2]==0 or dist<distmin[2]): #third entry
+                                    distmin[2]=dist
+                                    p[2]=(xMatrix, yMatrix)
+                                    gradValues[2]=gradx[i,j],grady[i,j]
+
+                                        
+                        # Loop that calculates sum of square distances 
+                        for i, dist in enumerate(distmin):
+                            # if distmin[0] < 0.5 => dist ~= 0, then no need to interpolate the grid
+                            if(dist <0.5):
+                                estimatedGradientX = gradValues[i][0]
+                                estimatedGradientY = gradValues[i][1]
+                                closePoint = True
+                                continue 
+                            else:
+                                denom += 1/dist**2
+                        
+                        # if stick point is not so close to point on DEM:
+                        # there are no close points
+                        if(closePoint == False): 
+                            for i, dist in enumerate(distmin):
+                            # if distmin[0] < 0.5 => dist ~= 0, then no need to interpolate the grid
+                                estimatedGradientX += 1/dist**2/denom*gradValues[i][0]
+                                estimatedGradientY += 1/dist**2/denom*gradValues[i][1]
+                                
+                        
+                        gradStickFile.write(f"{xCoord}  {yCoord}  {p}  {distmin}  {estimatedGradientX}  {estimatedGradientY} \n")
 
 
+def getGradientInStickCoordinates(stickPosition):
 
-
-distMatrix = {
-    "p1": [0,(0,0)],
-    "p2": [0,(0,0)],
-    "p3": [0,(0,0)]
-}
-
-
+    ###### This method calculates weighted average gradient around stick position ######
+    
+    with open ('gradient_x_dem.dat','r') as gradXFile:
+        with open ('gradient_y_dem.dat', 'r') as gradYFile:
+           
+            gradx = np.loadtxt(gradXFile)
+            grady = np.loadtxt(gradYFile)
         
+            distmin = [0.0,0.0,0.0]
+
+            xCoord = stickPosition[0]
+            yCoord = stickPosition[1]
+
+            p=[(0.0,0.0),(0.0,0.0),(0.0,0.0)] # vector of closest points
+            denom = 0.0
+            gradValues = [(0.0,0.0),(0.0,0.0),(0.0,0.0)]
+            closePoint = False
+            estimatedGradientX, estimatedGradientY = 0.0, 0.0
+
+            for i, _ in enumerate(gradx):
+                for j, _ in enumerate(gradx[i]):
+                    xMatrix = xStartingValue + j*GRID_DIST
+                    yMatrix = yFinalValue - i*GRID_DIST
+                    dist = math.sqrt((xMatrix-xCoord)**2 + (yMatrix-yCoord)**2)     
+
+                    if(distmin[0]==0): #first entry
+                        distmin[0]=dist
+                        p[0]=(xMatrix, yMatrix)
+                        gradValues[0]=(gradx[i,j],grady[i,j])
+                    elif(dist<distmin[0]): #getting minimum distance
+                        distmin[2]=distmin[1]
+                        p[2]=p[1]
+                        gradValues[2]=gradValues[1]
+                        distmin[1]=distmin[0]
+                        p[1]=p[0]
+                        gradValues[1]=gradValues[0]
+                        distmin[0]=dist
+                        p[0]=(xMatrix, yMatrix)
+                        gradValues[0]=gradx[i,j],grady[i,j]
+                    elif(distmin[1]==0): #second entry
+                        distmin[1]=dist
+                        p[1]=(xMatrix, yMatrix)
+                        gradValues[1]=gradx[i,j],grady[i,j]
+                    elif(dist<distmin[1]): #getting minimum distance
+                        distmin[2]=distmin[1]
+                        p[2]=p[1]
+                        gradValues[2]=gradValues[1]
+                        distmin[1]=dist
+                        p[1]=(xMatrix, yMatrix)
+                        gradValues[1]=gradx[i,j],grady[i,j]
+                    elif(distmin[2]==0 or dist<distmin[2]): #third entry
+                        distmin[2]=dist
+                        p[2]=(xMatrix, yMatrix)
+                        gradValues[2]=gradx[i,j],grady[i,j]
+
+                            
+            # Loop that calculates sum of square distances 
+            for i, dist in enumerate(distmin):
+                # if distmin[0] < 0.5 => dist ~= 0, then no need to interpolate the grid
+                if(dist <0.5):
+                    estimatedGradientX = gradValues[i][0]
+                    estimatedGradientY = gradValues[i][1]
+                    closePoint = True
+                    continue 
+                else:
+                    denom += 1/dist**2
+            
+            # if stick point is not so close to point on DEM:
+            # there are no close points
+            if(closePoint == False): 
+                for i, dist in enumerate(distmin):
+                # if distmin[0] < 0.5 => dist ~= 0, then no need to interpolate the grid
+                    estimatedGradientX += 1/dist**2/denom*gradValues[i][0]
+                    estimatedGradientY += 1/dist**2/denom*gradValues[i][1]
+                    
+            
+            return estimatedGradientX, estimatedGradientY
+
+
+def updateStickPosition():
+    stickPositions, grad = [], []
+    sumaVel = []
     
+    with open ('gradient_in_stick.dat', 'r') as stickPosAndGradient:
+        for line in stickPosAndGradient.readlines():
+            line = line.split()
+            sumaVel.append(0.0)
+            stickPositions.append((float(line[0]), float(line[1])))        
+            grad.append((float(line[len(line)-2]),float(line[len(line)-1])))
+
+    with open ('vel_darek.dat', 'r') as velFile:
+        with open ('vel_darek_mensuales.dat', 'w') as velMensuales:
+            
+            vel = np.loadtxt(velFile)
+            initialDay = int(vel[0][len(vel[0])-4])
+            
+            for k, _ in enumerate(vel):
+                day = int(vel[k][len(vel[k])-4])
+                for i, _ in enumerate(stickPositions):
+                    
+
+                    sumaVel[i] += vel[k][i]
+                    # print(sumaVel[i])
+                if (day - initialDay ==30): #30 days
+                    velMensuales.write(f"{'  '.join(map(str,sumaVel))} \n")
+                    initialDay = day
+                    for i, _ in enumerate(stickPositions):
+                        sumaVel[i] = 0.0
+
+
+
+
+
 def main():
     
     # interpolate()
     # gradient()
-    angleCalc()
+    # speedComponentsDem()
     # getSpeedMap()
-
+    # getGradientInStickCoordinates()
+    updateStickPosition()
     # fig = plt.figure(figsize=(6,6))
     # ax = fig.add_subplot(111, projection='3d')
     
