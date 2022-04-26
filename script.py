@@ -1,3 +1,9 @@
+"""
+@author: Iván Pérez
+         ivan.perezd314@gmail.com
+"""
+
+
 import numpy as np
 import math
 
