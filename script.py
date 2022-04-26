@@ -341,9 +341,28 @@ def getGradientInStickCoordinates(stickPosition):
             
             return estimatedGradientX, estimatedGradientY
 
+def checkClosestPointSpeed(point):
+    with open ('vel_interpolada_3.dat', 'r') as velFile:
+        p = None
+        min = GRID_DIST
+        v = None
+        for line in velFile.readlines():
+            line = line.split()
+            
+            xCoord, yCoord = float(line[0]), float(line[1])
+            dist = math.sqrt((xCoord-point[0])**2 + (yCoord-point[1])**2)
+            if(dist < min):
+                min = dist
+                p = (xCoord, yCoord)
+                v = float(line[len(line)-1])
+
+        return v
+
+
+
 
 def updateStickPosition():
-    stickPositions, grad = [], []
+    stickPositions, grad = [], [], []
     sumaVel = []
     
     with open ('gradient_in_stick.dat', 'r') as stickPosAndGradient:
@@ -371,6 +390,31 @@ def updateStickPosition():
                     initialDay = day
                     for i, _ in enumerate(stickPositions):
                         sumaVel[i] = 0.0
+
+    with open ('vel_darek_mensuales.dat', 'r') as velMensuales:
+        with open ('updated_stick_positions.dat', 'w') as updatedStickPositions:
+            
+            
+            for line in velMensuales.readlines():
+                line = line.split('  ')
+                
+                for i, pos in enumerate(stickPositions):
+                    gradXvector, gradYvector = getGradientInStickCoordinates((pos[0],pos[1]))
+                    
+                    cosine = gradXvector/(math.sqrt(gradXvector**2 + gradYvector**2))
+                    sine = gradYvector/(math.sqrt(gradXvector**2 + gradYvector**2))
+
+                    if (line[i] == 'nan'):
+                        print("nan")
+                        xCoord = pos[0] + checkClosestPointSpeed((pos[0],pos[1]))/12*cosine
+                        yCoord = pos[1] + checkClosestPointSpeed((pos[0],pos[1]))/12*sine
+                    else:
+                        xCoord = pos[0] + float(line[i])*cosine
+                        yCoord = pos[1] +float(line[i])*sine
+                    stickPositions[i] = (xCoord,yCoord)  # speed * cosine(angle), where cosine(angle) = gradXvector/hypotenone 
+                    
+                
+                updatedStickPositions.write(f" {'  '.join(map(str,stickPositions))} \n")
 
 
 
