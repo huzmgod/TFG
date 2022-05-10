@@ -11,15 +11,21 @@ import math
 ###############################       CONSTANTS       ####################################
 ########################################################################################## 
 
-###### STARTING GRID VALUES (HANSBREEN) WGS84 ######
-xStartingValue, xFinalValue = 510425.000, 519025.000
-yStartingValue, yFinalValue =  8547775.000, 8564175.000
-
 ###### GRID SQUARE LENGTH ######
 GRID_DIST = 50
 
+###### STARTING GRID VALUES (HANSBREEN) WGS84 ######
+xStartingValue, xFinalValue = 510425.000, 519025.000
+yStartingValue, yFinalValue =  8547775.000, 8564175.000
+rows = (yFinalValue-yStartingValue)/GRID_DIST
+cols = (xFinalValue-xStartingValue)/GRID_DIST
+
 ###### SIGN FUNCTION ######
 sign = lambda x: math.copysign(1, x)
+
+##### ZERO CONTOUR POINTS #####
+zeroContourPoints = []
+
 
 ##########################################################################################
 ###############################         GRIDS         ####################################
@@ -30,8 +36,8 @@ sign = lambda x: math.copysign(1, x)
 # Initial y-axis value: 8547775
 # Final y-axis value: 8564175
 
-xDemGrid= np.linspace(510425.000,519025.000,num= 173)
-yDemGrid= np.linspace(8547775.000, 8564175.000, num= 329)
+xDemGrid= np.linspace(xStartingValue,yStartingValue,num= 173)
+yDemGrid= np.linspace(yStartingValue, yFinalValue, num= 329)
 zDemGrid =np.zeros((329,173), dtype=float)
 xSpeedGrid, ySpeedGrid = [],[]
 absSpeed = [] #m/year
@@ -422,7 +428,28 @@ def updateStickPosition():
                 
                 updatedStickPositions.write(f" {'  '.join(map(str,stickPositions))} \n")
 
+def checkClosestPoint(x,y):
+    with open ('dem_utm_wgs1_clipped_Hans_rgi60_50m_recortado_blanked.dat','r') as demGrid:
+        minDist = math.sqrt((x-xStartingValue)**2 + (y-yStartingValue)**2)
+        for row in demGrid.readlines():
+            row = row.split()
+            dist = math.sqrt((x-float(row[0]))**2 + (y-float(row[1]))**2)
+            if(dist < minDist):
+                minDist = dist
+                newX, newY = row[0], row[1]
+        return newX, newY
 
+def roundAndSelect():
+    with open ('dem_utm_wgs1_clipped_Hans_rgi60_50m_recortado_blanked.dat','r') as demGrid:
+        with open ('zero_contour_points_Dem.dat', 'r') as file:
+            with open ('zero_contour_points_Dem_50_points.dat', 'w') as fileWrite:
+                
+                    for line in file.readlines():
+                        line = line.split()
+                        x, y  = round(float(line[0]),0), round(float(line[1]),0)
+                        newX, newY = checkClosestPoint(x,y)
+                        fileWrite.write(f"{newX} {newY} \n")
+                    
 
 
 
@@ -433,7 +460,8 @@ def main():
     # speedComponentsDem()
     # getSpeedMap()
     # getGradientInStickCoordinates()
-    updateStickPosition()
+    # updateStickPosition()
+    roundAndSelect()
     # fig = plt.figure(figsize=(6,6))
     # ax = fig.add_subplot(111, projection='3d')
     
