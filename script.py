@@ -7,6 +7,8 @@
 import numpy as np
 import math
 
+from sqlalchemy import null
+
 ##########################################################################################
 ###############################       CONSTANTS       ####################################
 ########################################################################################## 
@@ -147,11 +149,11 @@ def gradient():
         
     # print(f"{gradx} \n {grady}")
 
-def speedComponentsDem():
-    #Calculate angle between gradient components
+def speedComponentsDem(gradX,gradY): #gradX and gradY are .dat files in matrix form
+    #This method calculates speed components for every single coordinate in DEM
     with open ("vel_interpolada_3.dat",'r') as speedValues:
-        with open("gradient_x_dem.dat",'r') as gradXFile:
-            with open("gradient_y_dem.dat",'r') as gradYFile:
+        with open(f"{gradX}",'r') as gradXFile:
+            with open(f"{gradY}",'r') as gradYFile:
                     with open("speed_components.dat",'w') as speedFile:
                         gradx = np.loadtxt(gradXFile)
                         grady = np.loadtxt(gradYFile)
@@ -193,13 +195,13 @@ def speedComponentsDem():
 
 
 
-def getGradientInStickCoordinates():
+def getGradientInStickCoordinates(filenameX, filenameY): #calculates gradients for all sticks in first instance
 
     ###### STICKS COORDINATES ######
     
     with open ('posiciones_tyczki.dat','r') as posicionesEstacas:
-        with open ('gradient_x_dem.dat','r') as gradXFile:
-            with open ('gradient_y_dem.dat', 'r') as gradYFile:
+        with open (f'{filenameX}','r') as gradXFile:
+            with open (f'{filenameY}', 'r') as gradYFile:
                 with open ('gradient_in_stick.dat', 'w') as gradStickFile:
                     gradx = np.loadtxt(gradXFile)
                     grady = np.loadtxt(gradYFile)
@@ -273,12 +275,12 @@ def getGradientInStickCoordinates():
                         gradStickFile.write(f"{xCoord}  {yCoord}  {p}  {distmin}  {estimatedGradientX}  {estimatedGradientY} \n")
 
 
-def getGradientInStickCoordinates(stickPosition):
+def getGradientInSpecificStick(gradX, gradY, stickPosition):
 
     ###### This method calculates weighted average gradient around stick position ######
     
-    with open ('gradient_x_dem.dat','r') as gradXFile:
-        with open ('gradient_y_dem.dat', 'r') as gradYFile:
+    with open (f'{gradX}','r') as gradXFile:
+        with open (f'{gradY}', 'r') as gradYFile:
            
             gradx = np.loadtxt(gradXFile)
             grady = np.loadtxt(gradYFile)
@@ -373,7 +375,7 @@ def checkClosestPointSpeed(point):
 
 
 
-def updateStickPosition():
+def updateStickPosition(gradX, gradY):
     stickPositions, grad = [], [], []
     sumaVel = []
     
@@ -411,15 +413,15 @@ def updateStickPosition():
                 line = line.split('  ')
                 
                 for i, pos in enumerate(stickPositions):
-                    gradXvector, gradYvector = getGradientInStickCoordinates((pos[0],pos[1]))
+                    gradXvector, gradYvector = getGradientInSpecificStick(gradX, gradY, (pos[0],pos[1]))
                     
                     cosine = gradXvector/(math.sqrt(gradXvector**2 + gradYvector**2))
                     sine = gradYvector/(math.sqrt(gradXvector**2 + gradYvector**2))
 
                     if (line[i] == 'nan'):
                         print("nan")
-                        xCoord = pos[0] + checkClosestPointSpeed((pos[0],pos[1]))/12*cosine
-                        yCoord = pos[1] + checkClosestPointSpeed((pos[0],pos[1]))/12*sine
+                        xCoord = pos[0] + checkClosestPointSpeed((pos[0],pos[1]))/21*cosine
+                        yCoord = pos[1] + checkClosestPointSpeed((pos[0],pos[1]))/21*sine
                     else:
                         xCoord = pos[0] + float(line[i])*cosine
                         yCoord = pos[1] +float(line[i])*sine
@@ -440,6 +442,8 @@ def checkClosestPoint(x,y):
         return newX, newY
 
 def roundAndSelect():
+
+    # selects contour points from DEM given contour points datafile (which are out of DEM)
     with open ('dem_utm_wgs1_clipped_Hans_rgi60_50m_recortado_blanked.dat','r') as demGrid:
         with open ('zero_contour_points_Dem.dat', 'r') as file:
             with open ('zero_contour_points_Dem_50_points.dat', 'w') as fileWrite:
@@ -450,27 +454,152 @@ def roundAndSelect():
                         newX, newY = checkClosestPoint(x,y)
                         fileWrite.write(f"{newX} {newY} \n")
                     
+def printGradient(filenameX, filenameY):
+    with open (f'{filenameX}.dat', 'r') as xgrad:
+        with open (f'{filenameY}.dat', 'r') as ygrad:
+            with open (f'{filenameX}_2plot.dat', 'w') as gradx:
+                with open (f'{filenameY}_2plot.dat', 'w') as grady:
+                    # with open (f'{filenameX}_angles.dat', 'w') as angle:
+                    #     with open ('angle_dem.dat', 'r') as angleRead:
+                            valuex = 0
+                            y = yFinalValue
+                            for line in xgrad.readlines():
+                                line = line.split()
+                                x = xStartingValue
+                                for i, _ in enumerate(line):
+                                    value = line[i]
+                                    gradx.write(f"{x} {y} {value} \n")
+                                    x += GRID_DIST
+                                y -= GRID_DIST
+                            valuey=0
+                            y = yFinalValue
+                            for line in ygrad.readlines():
+                                line = line.split()
+                                x = xStartingValue
+                                for i, _ in enumerate(line):
+                                    value = float(line[i])
+                                    if (value > 0):
+                                        value = value * (-1)
+                                    grady.write(f"{x} {y} {value} \n")
+                                    x += GRID_DIST
+                                y -= GRID_DIST
+                            # valueAngle = 0
+                            # y = yFinalValue
+                            # for line in angleRead.readlines():
+                            #     line = line.split()
+                            #     x = xStartingValue
+                            #     for i, _ in enumerate(line):
+                            #         value = line[i]
+                            #         angle.write(f"{x} {y} {value} \n")
+                            #         x += GRID_DIST
+                            #     y -= GRID_DIST
 
+def checkArrayOutOfBoundOrZero (matrix, i, j): #checks if given row,column are valid for given matrix
+    try: 
+        a = matrix[i][j]
+        if (a == 0.0):
+            return True
+    except IndexError:
+        return True
+    return False
 
+def customGradient(INTERVAL, MID_INTERVAL): 
 
+    distance = INTERVAL*2*GRID_DIST
+    with open('cuadricula_superficie_Hansbreen.dat','r') as zGrid:
+        with open(f'custom_gradient_x_{distance}m_interval.dat', 'w') as gradx: 
+            with open(f'custom_gradient_y_{distance}m_interval.dat', 'w') as grady:
+
+                zMatrix = np.loadtxt(zGrid)
+                
+                
+                gradXcustom, gradYcustom = np.zeros((329,173), dtype=float), np.zeros((329,173), dtype=float)
+                
+                # INTERVAL = 2 # This represents 2*GRID_DIST = 100m
+                # MID_INTERVAL = int(INTERVAL/2)
+                # For Y values
+                for i, _ in enumerate(zMatrix):
+                    for j, _ in enumerate(zMatrix[i]):
+                        
+                        if(checkArrayOutOfBoundOrZero(zMatrix,i,j)):
+                            gradYcustom[i][j] = 0.0
+                            gradXcustom[i][j] = 0.0
+
+                        # Y-gradient
+                        if(checkArrayOutOfBoundOrZero(zMatrix,i-INTERVAL,j)): #row above is empty or zero
+                            if(checkArrayOutOfBoundOrZero(zMatrix,i-MID_INTERVAL,j)): #row immediately above is empty or zero
+                                if(checkArrayOutOfBoundOrZero(zMatrix,i+INTERVAL,j)): 
+                                    if(checkArrayOutOfBoundOrZero(zMatrix,i+MID_INTERVAL,j)): #next row empty or zero
+                                        gradYcustom[i][j] = 0.0 #no data because every relevant row is empty or zero
+                                    else: 
+                                        gradYcustom[i][j] = (zMatrix[i][j] - zMatrix[i+MID_INTERVAL][j])/(MID_INTERVAL*GRID_DIST)
+                                else: 
+                                    gradYcustom[i][j] = (zMatrix[i][j] - zMatrix[i+INTERVAL][j])/(INTERVAL*GRID_DIST)
+                                
+                            else:
+                                if(checkArrayOutOfBoundOrZero(zMatrix,i+INTERVAL,j)): 
+                                    if(checkArrayOutOfBoundOrZero(zMatrix,i+MID_INTERVAL,j)): #next row empty or zero
+                                        gradYcustom[i][j] = (zMatrix[i-MID_INTERVAL][j] - zMatrix[i][j])/(MID_INTERVAL*GRID_DIST)
+                                    else: 
+                                        gradYcustom[i][j] = (zMatrix[i-MID_INTERVAL][j] - zMatrix[i+MID_INTERVAL][j])/((MID_INTERVAL+MID_INTERVAL)*GRID_DIST)
+                                else: 
+                                    gradYcustom[i][j] = (zMatrix[i-MID_INTERVAL][j] - zMatrix[i+INTERVAL][j])/((MID_INTERVAL+INTERVAL)*GRID_DIST)
+                        else:
+                                if(checkArrayOutOfBoundOrZero(zMatrix,i+INTERVAL,j)): 
+                                    if(checkArrayOutOfBoundOrZero(zMatrix,i+MID_INTERVAL,j)): #next row empty or zero
+                                        gradYcustom[i][j] = (zMatrix[i-INTERVAL][j] - zMatrix[i][j])/(INTERVAL*GRID_DIST)
+                                    else: 
+                                        gradYcustom[i][j] = (zMatrix[i-INTERVAL][j] - zMatrix[i+MID_INTERVAL][j])/((INTERVAL+MID_INTERVAL)*GRID_DIST)
+                                else: 
+                                    gradYcustom[i][j] = (zMatrix[i-INTERVAL][j] - zMatrix[i+INTERVAL][j])/((INTERVAL+INTERVAL)*GRID_DIST) # general expression for gradient when all values are correct
+                        
+                        #----------------------------------------------#
+                        #X-gradient
+                        if(checkArrayOutOfBoundOrZero(zMatrix,i,j-INTERVAL)): #column left is empty or zero
+                            if(checkArrayOutOfBoundOrZero(zMatrix,i,j-MID_INTERVAL)): #column immediately left is empty or zero
+                                if(checkArrayOutOfBoundOrZero(zMatrix,i,j+INTERVAL)): 
+                                    if(checkArrayOutOfBoundOrZero(zMatrix,i,j+MID_INTERVAL)): #next column empty or zero
+                                        gradXcustom[i][j] = 0.0 #no data because every relevant column is empty or zero
+                                    else: 
+                                        gradXcustom[i][j] = (zMatrix[i][j] - zMatrix[i][j+MID_INTERVAL])/(MID_INTERVAL*GRID_DIST)
+                                else: 
+                                    gradXcustom[i][j] = (zMatrix[i][j] - zMatrix[i][j+INTERVAL])/(INTERVAL*GRID_DIST)
+                                
+                            else:
+                                if(checkArrayOutOfBoundOrZero(zMatrix,i,j+INTERVAL)): 
+                                    if(checkArrayOutOfBoundOrZero(zMatrix,i,j+MID_INTERVAL)): #next column empty or zero
+                                        gradXcustom[i][j] = (zMatrix[i][j-MID_INTERVAL] - zMatrix[i][j])/(MID_INTERVAL*GRID_DIST)
+                                    else: 
+                                        gradXcustom[i][j] = (zMatrix[i][j-MID_INTERVAL] - zMatrix[i][j+MID_INTERVAL])/((MID_INTERVAL+MID_INTERVAL)*GRID_DIST)
+                                else: 
+                                    gradXcustom[i][j] = (zMatrix[i][j-MID_INTERVAL] - zMatrix[i][j+INTERVAL])/((MID_INTERVAL+INTERVAL)*GRID_DIST)
+                        else:
+                                if(checkArrayOutOfBoundOrZero(zMatrix,i,j+INTERVAL)): 
+                                    if(checkArrayOutOfBoundOrZero(zMatrix,i,j+MID_INTERVAL)): #next column empty or zero
+                                        gradXcustom[i][j] = (zMatrix[i][j-INTERVAL] - zMatrix[i][j])/(INTERVAL*GRID_DIST)
+                                    else: 
+                                        gradXcustom[i][j] = (zMatrix[i][j-INTERVAL] - zMatrix[i][j+MID_INTERVAL])/((INTERVAL+MID_INTERVAL)*GRID_DIST)
+                                else: 
+                                    gradXcustom[i][j] = (zMatrix[i][j-INTERVAL] - zMatrix[i][j+INTERVAL])/((INTERVAL+INTERVAL)*GRID_DIST) # general expression for gradient when all values are correct
+
+                np.savetxt(gradx,gradXcustom, fmt='%.4f')
+                np.savetxt(grady,gradYcustom, fmt='%.4f')
 def main():
     
-    # interpolate()
-    # gradient()
-    # speedComponentsDem()
-    # getSpeedMap()
-    # getGradientInStickCoordinates()
-    # updateStickPosition()
-    roundAndSelect()
-    # fig = plt.figure(figsize=(6,6))
-    # ax = fig.add_subplot(111, projection='3d')
+    metros_gradiente = 400
+    #interval = int(metros_gradiente/(2*GRID_DIST))
+    #customGradient(interval,interval-1)
+    gradXfile = f"custom_gradient_x_{metros_gradiente}m_interval.dat"
+    gradYfile = f"custom_gradient_y_{metros_gradiente}m_interval.dat"
     
-    # # Plot a 3D surface
-    # ax.plot_surface(np.array(xDemGrid), np.array(yDemGrid), Z )
-
-    # plt.show()
-
     # interpolate()
+    # gradient(): this is conventional gradient
+    speedComponentsDem(gradXfile, gradYfile)
+    getGradientInStickCoordinates(gradXfile, gradYfile)
+    updateStickPosition(gradXfile, gradYfile)
+    # roundAndSelect()
+    
+   
 
 
 if __name__=='__main__':
