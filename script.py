@@ -389,6 +389,7 @@ def updateStickPosition(gradX, gradY):
     stickPositions, grad = [], []
     sumaVel = []
 
+    # Collects firsts positions
     with open('gradient_in_stick.dat', 'r') as stickPosAndGradient:
         for line in stickPosAndGradient.readlines():
             line = line.split()
@@ -627,48 +628,71 @@ def gradientSofter(gradY, softMetrics = 0):
         with open(f"{gradY}_soft.dat", 'w') as gradySofted:
             grady = np.loadtxt(grady2soft)
             gradYcustom = np.zeros((329, 173), dtype=float)
-            
+            # TODO: horizontal average 
             for i, _ in enumerate(grady):
                 for j, value in enumerate(grady[i]):
-                    sumGrad = 0.0
-                    if (value > 0):
-                        
-                        boolCheck = {
-                            i-2: checkArrayOutOfBoundOrZero(grady,i-2, j),
-                            i-1: checkArrayOutOfBoundOrZero(grady,i-1, j),
-                            i+1: checkArrayOutOfBoundOrZero(grady,i+1, j),
-                            i+2: checkArrayOutOfBoundOrZero(grady,i+2, j)
-                        }
-                        count = 1 #must be average between proper value and (4) more, so it starts from 1
-                        for key, values in boolCheck.items():
-                            if(values == False):
-                                sumGrad += grady[key,j]
-                                count += 1
-                        gradYcustom[i][j] = sumGrad/count
-                    else:
-                        gradYcustom[i][j] = value
+                    sumGrad = value
+                    # if (value > 0):
+                    boolCheckHorizontal = {
+                        j-2: checkArrayOutOfBoundOrZero(grady,i, j-2),
+                        j-1: checkArrayOutOfBoundOrZero(grady,i, j-1),
+                        j+1: checkArrayOutOfBoundOrZero(grady,i, j+1),
+                        j+2: checkArrayOutOfBoundOrZero(grady,i, j+2)
+                    }
+                    boolCheck = {
+                        i-2: checkArrayOutOfBoundOrZero(grady,i-2, j),
+                        i-1: checkArrayOutOfBoundOrZero(grady,i-1, j),
+                        i+1: checkArrayOutOfBoundOrZero(grady,i+1, j),
+                        i+2: checkArrayOutOfBoundOrZero(grady,i+2, j)
+                    }
+                    count = 1 #must be average between proper value and (4) more, so it starts from 1
+                    for key, values in boolCheck.items():
+                        if(values == False):
+                            sumGrad += grady[key,j]
+                            count += 1
+                    for key, values in boolCheckHorizontal.items():
+                        if(values == False):
+                            sumGrad += grady[i,key]
+                            count += 1
+                    gradYcustom[i][j] = sumGrad/count
+                    # else:
+                    #     gradYcustom[i][j] = value
 
             np.savetxt(gradySofted, gradYcustom, fmt='%.4f')
+
+def stickPositionsPlotter():
+    with open('updated_stick_positions.dat','r') as stickPositions:
+        with open('updated_stick_position_2plot.dat','w') as stickPositions2plot:
+            for line in stickPositions.readlines():
+                for i, item in enumerate(line):
+                    if (i==0):
+                        stickPositions2plot.write("")
+
+                    elif (item == "(" or item == ")"):
+                        stickPositions2plot.write(",")
+                    else:
+                        stickPositions2plot.write(item)
 
 
 def main():
 
-    metros_gradiente = 200
+    metros_gradiente = 600
     interval = int(metros_gradiente/(2*GRID_DIST))
-    customGradient(interval, interval-1)
+    # customGradient(interval, interval-1)
     gradXfile = f"custom_gradient_x_{metros_gradiente}m_interval"
     gradYfile = f"custom_gradient_y_{metros_gradiente}m_interval"
 
     gradXfileDat = f"custom_gradient_x_{metros_gradiente}m_interval.dat"
-    gradYfileDat = f"custom_gradient_x_{metros_gradiente}m_interval.dat"
+    gradYfileDat = f"custom_gradient_y_{metros_gradiente}m_interval_soft.dat"
     # gradient(): this is conventional gradient
     # speedComponentsDem(gradXfileDat, gradYfileDat)
+    # gradientSofter(gradYfile)
+    # printGradient(gradXfile, f"{gradYfile}_soft")
     # getGradientInStickCoordinates(gradXfileDat, gradYfileDat)
     # updateStickPosition(gradXfileDat, gradYfileDat)
-
+    stickPositionsPlotter()
     softMetrics = metros_gradiente/(2*GRID_DIST)
-    gradientSofter(gradYfile)
-    printGradient(gradXfile, f"{gradYfile}_soft")
+    
     
 
     # roundAndSelect()
