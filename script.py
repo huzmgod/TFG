@@ -6,7 +6,7 @@
 
 import numpy as np
 import math
-
+from pyrsistent import v
 from sqlalchemy import null
 
 ##########################################################################################
@@ -623,55 +623,112 @@ def customGradient(INTERVAL, MID_INTERVAL):
                 np.savetxt(grady, gradYcustom, fmt='%.4f')
 
 
-def gradientSofter(gradY, softMetrics = 0):
+def gradientSofter(gradY, softMetrics=0):
     with open(f"{gradY}.dat", 'r') as grady2soft:
         with open(f"{gradY}_soft.dat", 'w') as gradySofted:
             grady = np.loadtxt(grady2soft)
             gradYcustom = np.zeros((329, 173), dtype=float)
-            # TODO: horizontal average 
+
             for i, _ in enumerate(grady):
                 for j, value in enumerate(grady[i]):
                     sumGrad = value
                     # if (value > 0):
                     boolCheckHorizontal = {
-                        j-2: checkArrayOutOfBoundOrZero(grady,i, j-2),
-                        j-1: checkArrayOutOfBoundOrZero(grady,i, j-1),
-                        j+1: checkArrayOutOfBoundOrZero(grady,i, j+1),
-                        j+2: checkArrayOutOfBoundOrZero(grady,i, j+2)
+                        j-2: checkArrayOutOfBoundOrZero(grady, i, j-2),
+                        j-1: checkArrayOutOfBoundOrZero(grady, i, j-1),
+                        j+1: checkArrayOutOfBoundOrZero(grady, i, j+1),
+                        j+2: checkArrayOutOfBoundOrZero(grady, i, j+2)
                     }
                     boolCheck = {
-                        i-2: checkArrayOutOfBoundOrZero(grady,i-2, j),
-                        i-1: checkArrayOutOfBoundOrZero(grady,i-1, j),
-                        i+1: checkArrayOutOfBoundOrZero(grady,i+1, j),
-                        i+2: checkArrayOutOfBoundOrZero(grady,i+2, j)
+                        i-2: checkArrayOutOfBoundOrZero(grady, i-2, j),
+                        i-1: checkArrayOutOfBoundOrZero(grady, i-1, j),
+                        i+1: checkArrayOutOfBoundOrZero(grady, i+1, j),
+                        i+2: checkArrayOutOfBoundOrZero(grady, i+2, j)
                     }
-                    count = 1 #must be average between proper value and (4) more, so it starts from 1
+                    # must be average between proper value and (4) more, so it starts from 1
+                    count = 1
                     for key, values in boolCheck.items():
                         if(values == False):
-                            sumGrad += grady[key,j]
+                            sumGrad += grady[key, j]
                             count += 1
                     for key, values in boolCheckHorizontal.items():
                         if(values == False):
-                            sumGrad += grady[i,key]
+                            sumGrad += grady[i, key]
                             count += 1
                     gradYcustom[i][j] = sumGrad/count
-                    # else:
-                    #     gradYcustom[i][j] = value
 
             np.savetxt(gradySofted, gradYcustom, fmt='%.4f')
 
+
 def stickPositionsPlotter():
-    with open('updated_stick_positions.dat','r') as stickPositions:
-        with open('updated_stick_position_2plot.dat','w') as stickPositions2plot:
+    with open('updated_stick_positions.dat', 'r') as stickPositions:
+        with open('updated_stick_position_2plot.dat', 'w') as stickPositions2plot:
             for line in stickPositions.readlines():
                 for i, item in enumerate(line):
-                    if (i==0):
+                    if (i == 0):
                         stickPositions2plot.write("")
 
                     elif (item == "(" or item == ")"):
                         stickPositions2plot.write(",")
                     else:
                         stickPositions2plot.write(item)
+
+
+def yearlyStickSpeed():
+
+    speeds = []
+    for i in range(0, 16):
+        speeds.append(0.0)
+
+    monthCount = 0
+    with open('vel_darek_mensuales.dat', 'r') as monthlySpeed:
+        with open('vel_darek_anuales.dat', 'w') as yearlySpeed:
+            for line in monthlySpeed.readlines():
+                line = line.split('  ')
+                monthCount += 1
+                for i, _ in enumerate(speeds):
+                    if (line[i] == 'nan'):
+                        speeds[i] = -0.0
+                    else:
+                        speeds[i] = speeds[i] + float(line[i])
+                if(monthCount == 12):
+                    yearlySpeed.write(f" {'  '.join(map(str,speeds))} \n")
+                    monthCount = 0
+
+
+def monthlySticksResidue():
+    yearAvgSpeeds, residues = np.zeros((6,16),dtype=float), np.zeros((73,16), dtype=float)
+    
+    with open('vel_darek_anuales.dat', 'r') as yearlySpeed:
+        with open('vel_darek_mensuales.dat', 'r') as monthlySpeed:
+            with open('residuos_mensuales.dat', 'w') as monthlyResidues:
+                yearCount = 0
+                for row in yearlySpeed.readlines():
+                    row = row.split('  ')
+                    for j, _ in enumerate(yearAvgSpeeds[0]):
+                        if (row[j] == 'nan' or sign(float(row[j]))==-1.0):
+                            yearAvgSpeeds[yearCount,j] = -0.0
+                        else:
+                            
+                            yearAvgSpeeds[yearCount,j] = float(row[j])/12
+                    yearCount += 1 
+                
+                month = 0
+                for line in monthlySpeed.readlines():
+                    line = line.split('  ')
+                    year = 0
+                    for j, _ in enumerate(residues[0]):
+                        if((month+1) % 12 == 0):
+                            year = (month+1)//12-1
+                            
+                        elif (line[j] == 'nan'):
+                            residues[month,j] = -0.0
+                        else:
+                            residues[month,j] = float(line[j])-yearAvgSpeeds[year,j]
+                    print(month)
+                    month += 1
+            
+                np.savetxt(monthlyResidues, residues, fmt='%.4f')
 
 
 def main():
@@ -684,23 +741,22 @@ def main():
 
     gradXfileDat = f"custom_gradient_x_{metros_gradiente}m_interval.dat"
     gradYfileDat = f"custom_gradient_y_{metros_gradiente}m_interval_soft.dat"
+
     # gradient(): this is conventional gradient
     # speedComponentsDem(gradXfileDat, gradYfileDat)
     # gradientSofter(gradYfile)
     # printGradient(gradXfile, f"{gradYfile}_soft")
     # getGradientInStickCoordinates(gradXfileDat, gradYfileDat)
     # updateStickPosition(gradXfileDat, gradYfileDat)
-    stickPositionsPlotter()
+    # stickPositionsPlotter()
+
     softMetrics = metros_gradiente/(2*GRID_DIST)
+    monthlySticksResidue()
     
-    
-
+    # yearlyStickSpeed()
     # roundAndSelect()
-
     # interpolate()
-
-    # print(getGradientInSpecificStick(gradXfile, gradYfile, (514575.0, 8550075)))
-
+    
 
 if __name__ == '__main__':
     main()
