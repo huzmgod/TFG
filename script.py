@@ -733,6 +733,33 @@ def monthlySticksResidue():
             
                 np.savetxt(monthlyResidues, residues, fmt='%.4f')
 
+def componentSplitter():
+    year = 2005
+    for month in range(5,78):
+        with open(f'speedsAfterKrig/speedsAfterBayesianKriging_{month}_{year}.dat', 'r') as speeds:
+            with open('custom_gradient_x_600m_interval_2plot.dat', 'r') as xGrad:
+                with open('custom_gradient_y_600m_interval_2plot.dat', 'r') as yGrad:
+                    with open(f'speedsAfterKrig/components/speedXComponentAfterBayesianKriging_{month}_{year}_.dat', 'w') as xSpeedFile:
+                        with open(f'speedsAfterKrig/components/speedYComponentAfterBayesianKriging_{month}_{year}.dat', 'w') as ySpeedFile: 
+                    
+                            speeds = np.loadtxt(speeds)
+                            xGrad = np.loadtxt(xGrad)
+                            yGrad = np.loadtxt(yGrad)
+                            for i, _ in enumerate(yGrad):
+                                hyp = math.sqrt(xGrad[i][2]**2+yGrad[i][2]**2)
+                                if(hyp == 0.0):
+                                    xSpeed = 0.0
+                                    ySpeed = 0.0
+                                else:
+                                    cosine = xGrad[i][2]/hyp
+                                    sine = yGrad[i][2]/hyp
+                                    xSpeed = speeds[i][2]*cosine
+                                    ySpeed = speeds[i][2]*sine
+                                xSpeedFile.write(f"{speeds[i][0]} {speeds[i][1]} {xSpeed} \n")
+                                ySpeedFile.write(f"{speeds[i][0]} {speeds[i][1]} {ySpeed} \n")
+        print(f'MONTH={month} YEAR={year}')
+        if(month % 12 == 0):
+            year +=1
 
 def main():
 
@@ -754,8 +781,8 @@ def main():
     # stickPositionsPlotter()
 
     softMetrics = metros_gradiente/(2*GRID_DIST)
-    monthlySticksResidue()
-    
+    # monthlySticksResidue()
+    componentSplitter()
     # yearlyStickSpeed()
     # roundAndSelect()
     # interpolate()
