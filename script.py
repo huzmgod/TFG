@@ -41,7 +41,7 @@ zeroContourPoints = []
 # Initial y-axis value: 8547775
 # Final y-axis value: 8564175
 
-xDemGrid = np.linspace(xStartingValue, yStartingValue, num=173)
+xDemGrid = np.linspace(xStartingValue, xFinalValue, num=173)
 yDemGrid = np.linspace(yStartingValue, yFinalValue, num=329)
 zDemGrid = np.zeros((329, 173), dtype=float)
 xSpeedGrid, ySpeedGrid = [], []
