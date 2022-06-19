@@ -707,7 +707,7 @@ def monthlySticksResidue():
                     row = row.split('  ')
                     for j, _ in enumerate(yearAvgSpeeds[0]):
                         if (row[j] == 'nan' or sign(float(row[j]))==-1.0):
-                            yearAvgSpeeds[yearCount,j] = -0.0
+                            yearAvgSpeeds[yearCount,j] = np.nan
                         else:
                             
                             yearAvgSpeeds[yearCount,j] = float(row[j])/12
@@ -720,9 +720,12 @@ def monthlySticksResidue():
                     for j, _ in enumerate(residues[0]):
                         if((month+1) % 12 == 0):
                             year = (month+1)//12-1
-                            
+                            if (line[j] == 'nan'):
+                                residues[month,j] = np.nan
+                            else:
+                                residues[month,j] = float(line[j])-yearAvgSpeeds[year,j]
                         elif (line[j] == 'nan'):
-                            residues[month,j] = -0.0
+                            residues[month,j] = np.nan
                         else:
                             residues[month,j] = float(line[j])-yearAvgSpeeds[year,j]
                     print(month)

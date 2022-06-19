@@ -1,3 +1,4 @@
+from cmath import nan
 import matplotlib.pyplot as plt
 import sys
 sys.path.append(
@@ -10,77 +11,99 @@ xStartingValue, xFinalValue = 510425.000, 519025.000
 yStartingValue, yFinalValue = 8547775.000, 8564175.000
 xDemGrid = np.linspace(xStartingValue, xFinalValue, num=173)
 yDemGrid = np.linspace(yStartingValue, yFinalValue, num=329)
+GRID_DIST = 50
 
-
-# data = np.array(
-#     [
-#         [510425.000, 8547775.000, 0.47],
-#         [510475.000, 8547825.000, 0.56],
-#         [510525.000, 8547875.000, 0.74],
-#         [510575.000, 8547925.000, 1.47],
-#         [510625.000, 8547975.000, 1.74],
-#     ]
-# )
-krigData = []
-
-with open('zero_contour_points_Dem_50_points_random.dat', 'r') as contourZeros:
-    zeros = np.loadtxt(contourZeros)
-    for i, _ in enumerate(zeros):
-        data = [zeros[i][0],zeros[i][1],0.0]
-        krigData.append(data)
  
 with open('updated_stick_position_2plot.dat', 'r') as stickPositions:
     with open('residuos_mensuales.dat', 'r') as residues:
-        res = np.loadtxt(residues)
-        month = 0
-        for position in stickPositions.readlines():
-            aux = []
-            positions = position.split(',  ,')
-            for i in range(0, 16):
-                stick1 = str(positions[i].split(', '))
-                for char in ['[', ']', ' ', "'", "\n"]:
-                    stick1 = stick1.replace(char, "")
-                coords = stick1.split(',')
-                xCoord = float(coords[0])
-                yCoord = float(coords[1])
-                valueRes = res[month, i]
-                data = [xCoord, yCoord, valueRes]
+        with open('zero_contour_points_Dem_50_points_random.dat', 'r') as contourZeros:
+            zeros = np.loadtxt(contourZeros)
+            resMatrix = np.loadtxt(residues)
+            month= 5
+            equivalentMonth = month
+            year = 2005
+            for position in stickPositions.readlines():
+                
+                print(f'MONTH = {month}')
+                print(f'YEAR = {year}')
+                # print(f'RES={resMatrix}')
+                krigData, aux = [], []
+                for i, _ in enumerate(zeros):
+                    inputData = [zeros[i][0],zeros[i][1],0.0]
+                    krigData.append(inputData)
+                row = month - 5 
+                positions = position.split(',  ,')
+                for i in range(0, 16):
+                    stick1 = str(positions[i].split(', '))
+                    for char in ['[', ']', ' ', "'", "\n"]:
+                        stick1 = stick1.replace(char, "")
+                    coords = stick1.split(',')
+                    xCoord = float(coords[0])
+                    yCoord = float(coords[1])
+                    valueRes = resMatrix[row][i]
+                    print(f'{valueRes} {str(valueRes) =="nan"}')
+                    if (str(valueRes) =="nan" or valueRes == nan \
+                        or str(xCoord)=="nan" or str(yCoord)=="nan"): #associated to undefined stick speed
+                        continue
+                    data = [xCoord, yCoord, valueRes]
+                    krigData.append(data)
+                # print(krigData)
+                krigData = np.array(krigData)
+                print(krigData)
+                
+                OK = OrdinaryKriging(
+                    krigData[:, 0],
+                    krigData[:, 1],
+                    krigData[:, 2],
+                    variogram_model="gaussian",
+                    verbose=False,
+                    enable_plotting=False,
+                    exact_values = False
+                )
+                # except ValueError:
+                #     month += 1
+                #     if(month % 12 == 0):
+                #         year +=1
+                #     continue
 
-                krigData.append(data)
-            month += 1
-            break
-krigData = np.array(krigData)
-print(krigData)
-###############################################################################
-# Create the ordinary kriging object. Required inputs are the X-coordinates of
-# the data points, the Y-coordinates of the data points, and the Z-values of the
-# data points. If no variogram model is specified, defaults to a linear variogram
-# model. If no variogram model parameters are specified, then the code automatically
-# calculates the parameters by fitting the variogram model to the binned
-# experimental semivariogram. The verbose kwarg controls code talk-back, and
-# the enable_plotting kwarg controls the display of the semivariogram.
+                ###############################################################################
+                # Creates the kriged grid and the variance grid. Allows for kriging on a rectangular
+                # grid of points, on a masked rectangular grid of points, or with arbitrary points.
+                # (See OrdinaryKriging.__doc__ for more information.)
 
-OK = OrdinaryKriging(
-    krigData[:, 0],
-    krigData[:, 1],
-    krigData[:, 2],
-    variogram_model="gaussian",
-    verbose=False,
-    enable_plotting=False,
-    enable_statistics=True,
-    exact_values = True
-)
+                z, ss = OK.execute("grid", xDemGrid, yDemGrid)
 
-###############################################################################
-# Creates the kriged grid and the variance grid. Allows for kriging on a rectangular
-# grid of points, on a masked rectangular grid of points, or with arbitrary points.
-# (See OrdinaryKriging.__doc__ for more information.)
+                # ###############################################################################
+                # # Writes the kriged grid to an ASCII grid file and plot it.
 
-z, ss = OK.execute("grid", xDemGrid, yDemGrid)
+                kt.write_asc_grid(xDemGrid, yDemGrid, z, filename=f"speedsAfterKrig/output_residuos_{month}_{year}.asc")
+                # plt.imshow(z)
+                # plt.show()
 
-# ###############################################################################
-# # Writes the kriged grid to an ASCII grid file and plot it.
+                with open(f'speedsAfterKrig/output_residuos_{month}_{year}.asc', 'r') as kriggedResInDem:
+                    with open(f'speedsAfterKrig/output_residuos_{month}_{year}_clean.dat', 'w') as cleanRes:
+                        i=0
+                        for line in kriggedResInDem.readlines():
+                            if(i>6):
+                                cleanRes.write(line)
+                            i+=1
 
-kt.write_asc_grid(xDemGrid, yDemGrid, z, filename="output.asc")
-plt.imshow(z)
-plt.show()
+
+                with open(f'speedsAfterKrig/output_residuos_{month}_{year}_clean.dat', 'r') as kriggedResInDem:
+                    with open(f'speedsAfterKrig/output_residuos_{month}_{year}_2plot.dat', 'w') as plottedRes:
+                        residuosDem=np.loadtxt(kriggedResInDem)
+                        currentY = yFinalValue
+                        for i, _ in enumerate(residuosDem):
+                            currentX = xStartingValue
+                            for j, resVal in enumerate(residuosDem[i]):
+                                plottedRes.write(f"{currentX} {currentY} {resVal} \n")
+                                currentX += GRID_DIST
+                            currentY -= GRID_DIST
+
+                month += 1
+                if((month % 12) -1== 0):
+                    year +=1
+                    
+                    
+                
+                

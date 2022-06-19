@@ -4,8 +4,8 @@ yStartingValue, yFinalValue = 8547775.000, 8564175.000
 GRID_DIST = 50
 
 
-with open('output_residuos_2008_mes1.asc', 'r') as kriggedResInDem:
-    with open('output_residuos_2008_mes1_2plot.dat', 'w') as plottedRes:
+with open('speedsAfterKrig/output_residuos_5_2005.asc', 'r') as kriggedResInDem:
+    with open('speedsAfterKrig/output_residuos_5_2005_2plot.dat', 'w') as plottedRes:
         residuosDem=np.loadtxt(kriggedResInDem)
         currentY = yFinalValue
         for i, _ in enumerate(residuosDem):
