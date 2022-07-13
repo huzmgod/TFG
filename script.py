@@ -711,8 +711,7 @@ def monthlySticksResidue():
                         else:
                             
                             yearAvgSpeeds[yearCount,j] = float(row[j])/12
-                    yearCount += 1 
-                
+                    yearCount += 1  
                 month = 0
                 for line in monthlySpeed.readlines():
                     line = line.split('  ')
@@ -734,6 +733,11 @@ def monthlySticksResidue():
                 np.savetxt(monthlyResidues, residues, fmt='%.4f')
 
 def componentSplitter():
+    '''
+
+    Calculates components from speed modules given gradient values.
+
+    '''
     year = 2005
     for month in range(5,78):
         with open(f'speedsAfterKrig/speedsAfterBayesianKriging_{month}_{year}.dat', 'r') as speeds:
