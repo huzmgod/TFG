@@ -1,0 +1,7 @@
+- Modificar vel_darek_mensuales para que el intervalo temporal sea de 30,4375 días. Para los meses donde no hay datos,
+se hace una media entre el anterior y el siguiente. Se divide la suma de los datos entre el número de datos y se normaliza.
+- Actualizar posición estacas con los nuevos cambios.
+- Calculo los nuevos residuos.
+- Kriging de residuos.
+- Kriging bayesiano (suma prior + residuos), mensual.
+- Calcular velocidades por meses y componentes.

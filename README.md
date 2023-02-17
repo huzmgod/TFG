@@ -41,3 +41,7 @@ COLUMNAS:
 En el fichero updated_stick_positions.dat se obtiene la posición de las estacas actualizada por meses desde mayo de 2005 hasta abril de 2011.
 COLUMNAS:
 1 2 3 4 5 6 7 8 9 10 11 t t t t t
+
+Fichero noDataMonths.dat: número de NANs (mensuales) en las medidas de velocidad de vel_darek.dat
+COLUMNAS:
+DAY MONTH YEAR [NUMBER OF NANs IN MONTH(STICK_0) ... NUMBER OF NANs IN MONTH(STICK_16)]

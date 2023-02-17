@@ -4,14 +4,17 @@
 """
 
 
+from cmath import nan
 import numpy as np
 import math
-from pyrsistent import v
-from sqlalchemy import null
 
 ##########################################################################################
 ###############################       CONSTANTS       ####################################
 ##########################################################################################
+
+
+###### TEMPORAL STEP #######
+TIME_STEP = 30.4375
 
 ###### GRID SQUARE LENGTH ######
 GRID_DIST = 50
@@ -24,13 +27,14 @@ cols = (xFinalValue-xStartingValue)/GRID_DIST
 
 ###### SIGN FUNCTION ######
 
-
 def sign(x): return math.copysign(1, x)
 
 
 ##### ZERO CONTOUR POINTS #####
 zeroContourPoints = []
 
+##### NOT ENOUGH DATA STRING ##### 
+notEnoughData = "Not enough data"
 
 ##########################################################################################
 ###############################         GRIDS         ####################################
@@ -47,28 +51,39 @@ zDemGrid = np.zeros((329, 173), dtype=float)
 xSpeedGrid, ySpeedGrid = [], []
 absSpeed = []  # m/year
 
-# Data Storage: save speed values and dem grid from files
-# with open('datafiles/dem_utm_wgs1_clipped_Hans_rgi60_50m_recortado_blanked.dat', 'r') as demGrid:
-#     with open('vel_recortada.dat', 'r') as velGrid:
-#         with open('cuadricula_superficie_Hansbreen.dat', 'w') as sortedGrid:
 
-#             for line in demGrid.readlines():
-#                 value = line.split()
-#                 yIndex = yStartingValue
-#                 y = int((float(value[0]) - xStartingValue)/GRID_DIST)
-#                 # descendent order from greater y to lower y
-#                 x = 328 - int((float(value[1]) - yStartingValue)/GRID_DIST)
-#                 zDemGrid[x, y] = value[2]
-#             for row, value in enumerate(zDemGrid):
+##########################################################################################
+###############################        FUNCTIONS      ####################################
+##########################################################################################
 
-#                 sortedGrid.write(f"{' '.join(map(str,value))}\n")
+def storage():
 
-#             for line in velGrid.readlines():
-#                 if(float(line.split()[0]) > xFinalValue or float(line.split()[0]) < xStartingValue or float(line.split()[1]) > yFinalValue or float(line.split()[1]) < yStartingValue):
-#                     continue
-#                 xSpeedGrid.append(line.split()[0])
-#                 ySpeedGrid.append(line.split()[1])
-#                 absSpeed.append(line.split()[3])
+    '''
+        This function stores the values of the DEM grid and the speed grid
+        into a file
+    '''
+    with open('datafiles/dem_utm_wgs1_clipped_Hans_rgi60_50m_recortado_blanked.dat', 'r') as demGrid:
+        with open('vel_recortada.dat', 'r') as velGrid:
+            with open('cuadricula_superficie_Hansbreen.dat', 'w') as sortedGrid:
+
+                for line in demGrid.readlines():
+                    value = line.split()
+                    yIndex = yStartingValue
+                    y = int((float(value[0]) - xStartingValue)/GRID_DIST)
+                    # descendent order from greater y to lower y
+                    x = 328 - int((float(value[1]) - yStartingValue)/GRID_DIST)
+                    zDemGrid[x, y] = value[2]
+                for row, value in enumerate(zDemGrid):
+
+                    sortedGrid.write(f"{' '.join(map(str,value))}\n")
+
+                for line in velGrid.readlines():
+                    if(float(line.split()[0]) > xFinalValue or float(line.split()[0]) < xStartingValue \
+                        or float(line.split()[1]) > yFinalValue or float(line.split()[1]) < yStartingValue):
+                        continue
+                    xSpeedGrid.append(line.split()[0])
+                    ySpeedGrid.append(line.split()[1])
+                    absSpeed.append(line.split()[3])
 
 
 
@@ -153,7 +168,9 @@ def interpolate():
 def gradient():
 
     '''
-        This function calculates gradient(Z) in every (x,y) of DEM for h = 50m
+        This function calculates gradient(Z) in every (x,y) of DEM. 
+        Not used in any case along the code because h is not set properly in numpy.
+        Check customGradient() instead
     '''
     # Check gradient output
     gradx, grady = np.gradient(zDemGrid)
@@ -169,7 +186,7 @@ def speedComponentsDem(gradX, gradY):  # gradX and gradY are .dat files in matri
     '''
         This method calculates speed components for every single coordinate in DEM, based on gradient values
     '''
-    with open("vel_interpolada_3.dat", 'r') as speedValues:
+    with open("vel_interpolada_DEM_ordenada.dat", 'r') as speedValues:
         with open(f"{gradX}", 'r') as gradXFile:
             with open(f"{gradY}", 'r') as gradYFile:
                 with open("speed_components.dat", 'w') as speedFile:
@@ -214,14 +231,14 @@ def speedComponentsDem(gradX, gradY):  # gradX and gradY are .dat files in matri
 
 
 def getGradientInStickCoordinates(filenameX, filenameY):
-
     
     '''
-        Calculates gradients for all sticks in first instance
+        Calculates gradients for all sticks in first instance, since we have the initial position of all 16 sticks
+        in the file posiciones_tyczki.dat. Those gradient values are saved in gradient_in_stick.dat with the format:
+        xCoord yCoord [3-closest-points] [distances-3-closest-points] gradX gradY
     '''
 
-    ###### STICKS COORDINATES ######
-    with open('posiciones_tyczki.dat', 'r') as posicionesEstacas:
+    with open('datafiles/posiciones_tyczki.dat', 'r') as posicionesEstacas:
         with open(f'{filenameX}', 'r') as gradXFile:
             with open(f'{filenameY}', 'r') as gradYFile:
                 with open('gradient_in_stick.dat', 'w') as gradStickFile:
@@ -406,7 +423,7 @@ def checkClosestPoint(x, y):
 def checkClosestPointSpeed(point):
 
     '''
-    Calculates the closest point of DEM and returns the speed associated, given a point parameter (x,y)
+    Calculates the closest point (in DEM) and returns the speed associated, given a point parameter (x,y)
     '''
     speedDataPath = 'datafiles/vel_interpolada_DEM_ordenada.dat'
     with open(speedDataPath, 'r') as velFile:
@@ -425,43 +442,92 @@ def checkClosestPointSpeed(point):
 
         return v
 
+def computeMonthlySpeeds():
+
+    '''
+    Creates file vel_darek_mensuales_30.4375_normalized.dat with aggregated speed in every month
+    '''
+
+    with open('datafiles/vel_darek.dat', 'r') as velFile:
+        with open('datafiles/vel_darek_mensuales_30.4375_normalized.dat', 'w') as velMensuales:
+
+            vel = np.loadtxt(velFile)
+            day, month = 0,0
+            nanIndex = [0 for i in range(0,16)]
+            addVel = [0.0 for i in range(0,16)]
+            normVel = [0.0 for i in range(0,16)]
+
+            for k, _ in enumerate(vel):
+                day = int(vel[k][len(vel[k])-1])
+                month = int(vel[k][len(vel[k])-2])
+                year = int(vel[k][len(vel[k])-3])
+                
+                for i in range(0,16):
+                    if(np.isnan(vel[k][i])):
+                        nanIndex[i] += 1
+                    else:
+                        addVel[i] += vel[k][i]
+                if (day == 28 and month == 2):  # february
+                    for i, v in enumerate(addVel):
+                        if (nanIndex[i] >= 15):
+                            normVel[i] = "NotEnoughData"
+                        else:
+                            normVel[i] = v/(28-nanIndex[i])*TIME_STEP
+                            
+                    velMensuales.write(f"{'  '.join(map(str,normVel))} \n")
+                    print(day, month, year, nanIndex)
+                    addVel, normVel, nanIndex = [0.0 for i in range(0,16)], [0.0 for i in range(0,16)], \
+                         [0 for i in range(0,16)]
+                    continue
+
+                elif (day == 30 and (month == 4 or month == 6 or month == 9 or month == 11)):  # month of 30 days
+                    for i, v in enumerate(addVel):
+                        if (nanIndex[i] >= 15):
+                            normVel[i] = "NotEnoughData"
+                        else:
+                            normVel[i] = v/(30-nanIndex[i])*TIME_STEP
+                            
+                    velMensuales.write(f"{'  '.join(map(str,normVel))} \n")
+                    print(day, month, year, nanIndex)
+                    addVel, normVel, nanIndex = [0.0 for i in range(0,16)], [0.0 for i in range(0,16)], \
+                         [0 for i in range(0,16)]
+                    continue
+
+                elif (day == 31):  # month of 31 days
+                    for i, v in enumerate(addVel):
+                        if (nanIndex[i] >= 15):
+                            normVel[i] = "NotEnoughData"
+                        else:
+                            normVel[i] = v/(31-nanIndex[i])*TIME_STEP
+                            
+                    velMensuales.write(f"{'  '.join(map(str,normVel))} \n")
+                    print(day, month, year, nanIndex)
+                    addVel, normVel, nanIndex = [0.0 for i in range(0,16)], [0.0 for i in range(0,16)], \
+                         [0 for i in range(0,16)]
+                    continue
 
 def updateStickPosition(gradX, gradY):
 
     '''
-    Monthly updates sticks positions given gradient values of a concrete point
+    Monthly updates sticks positions given gradient values of a concrete point.
+    The procedure for each point is the following:
+        1. Read initial stick position (p0) and gradient values file (g_x, g_y)
+        2. Interpolate gradient value (IDW) from known (DEM) closest points and compute (g_x(p0), g_y(p0)))
+        3. Update stick position by component using monthly speed v: p1_x = p0_x + v * g_x/(|g|), p1_y = p0_y + g_y/(|g|) * v
     '''
 
     stickPositions, grad = [], []
     sumaVel = []
 
     # Collects firsts positions
-    with open('gradient_in_stick.dat', 'r') as stickPosAndGradient:
+    with open('gradients/gradient_in_stick.dat', 'r') as stickPosAndGradient:
         for line in stickPosAndGradient.readlines():
             line = line.split()
             sumaVel.append(0.0)
             stickPositions.append((float(line[0]), float(line[1])))
             grad.append((float(line[len(line)-2]), float(line[len(line)-1])))
 
-    with open('vel_darek.dat', 'r') as velFile:
-        with open('vel_darek_mensuales.dat', 'w') as velMensuales:
-
-            vel = np.loadtxt(velFile)
-            initialDay = int(vel[0][len(vel[0])-4])
-
-            for k, _ in enumerate(vel):
-                day = int(vel[k][len(vel[k])-4])
-                for i, _ in enumerate(stickPositions):
-
-                    sumaVel[i] += vel[k][i]
-
-                if (day - initialDay == 30):  # 30 days
-                    velMensuales.write(f"{'  '.join(map(str,sumaVel))} \n")
-                    initialDay = day
-                    for i, _ in enumerate(stickPositions):
-                        sumaVel[i] = 0.0
-
-    with open('vel_darek_mensuales.dat', 'r') as velMensuales:
+    with open('datafiles/vel_darek_mensuales_30.4375_normalized.dat.dat', 'r') as velMensuales:
         with open('updated_stick_positions.dat', 'w') as updatedStickPositions:
 
             for line in velMensuales.readlines():
@@ -474,7 +540,7 @@ def updateStickPosition(gradX, gradY):
                         (math.sqrt(gradXvector**2 + gradYvector**2))
                     sine = gradYvector / \
                         (math.sqrt(gradXvector**2 + gradYvector**2))
-
+                    # TODO: modify this. It's not correct
                     if (line[i] == 'nan'):
                         # 21 = number of months between January 2013 to August 2014
                         xCoord = pos[0] + \
@@ -854,17 +920,16 @@ def main():
     gradXfileDat = f"custom_gradient_x_{metros_gradiente}m_interval.dat"
     gradYfileDat = f"custom_gradient_y_{metros_gradiente}m_interval_soft.dat"
 
-    # gradient(): this is conventional gradient
-    # speedComponentsDem(gradXfileDat, gradYfileDat)
+    #speedComponentsDem(gradXfileDat, gradYfileDat)
     # gradientSofter(gradYfile)
     # printGradient(gradXfile, f"{gradYfile}_soft")
     # getGradientInStickCoordinates(gradXfileDat, gradYfileDat)
     # updateStickPosition(gradXfileDat, gradYfileDat)
     # stickPositionsPlotter()
-
+    computeMonthlySpeeds()
     softMetrics = metros_gradiente/(2*GRID_DIST)
     # monthlySticksResidue()
-    componentSplitter()
+    # componentSplitter()
     # yearlyStickSpeed()
     # roundAndSelect()
     # interpolate()
