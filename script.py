@@ -790,7 +790,7 @@ def gradientSofter(gradY, softMetrics=0):
 
 def stickPositionsPlotter():
     '''
-    Just a formatter
+    Just a formatter to see coordinates better in  QGIS
     '''
     with open('updated_stick_positions.dat', 'r') as stickPositions:
         with open('updated_stick_position_2plot.dat', 'w') as stickPositions2plot:
@@ -930,20 +930,23 @@ def main():
     metros_gradiente = 600
     interval = int(metros_gradiente/(2*GRID_DIST))
     # customGradient(interval, interval-1)
-    gradXfile = f"custom_gradient_x_{metros_gradiente}m_interval"
-    gradYfile = f"custom_gradient_y_{metros_gradiente}m_interval"
 
-    gradXfileDat = f"custom_gradient_x_{metros_gradiente}m_interval.dat"
-    gradYfileDat = f"custom_gradient_y_{metros_gradiente}m_interval_soft.dat"
+    gradXfile = f"gradients/custom_gradient_x_{metros_gradiente}m_interval"
+    gradYfile = f"gradients/custom_gradient_y_{metros_gradiente}m_interval"
+
+    gradXfileDat = f"gradients/custom_gradient_x_{metros_gradiente}m_interval.dat"
+    gradYfileDat = f"gradients/custom_gradient_y_{metros_gradiente}m_interval_soft.dat"
+
+    softMetrics = metros_gradiente/(2*GRID_DIST)
 
     #speedComponentsDem(gradXfileDat, gradYfileDat)
     # gradientSofter(gradYfile)
     # printGradient(gradXfile, f"{gradYfile}_soft")
     # getGradientInStickCoordinates(gradXfileDat, gradYfileDat)
-    # updateStickPosition(gradXfileDat, gradYfileDat)
-    # stickPositionsPlotter()
-    computeMonthlySpeeds()
-    softMetrics = metros_gradiente/(2*GRID_DIST)
+    # computeMonthlySpeeds()
+    updateStickPosition(gradXfileDat, gradYfileDat)
+    stickPositionsPlotter()
+    
     # monthlySticksResidue()
     # componentSplitter()
     # yearlyStickSpeed()
