@@ -1,8 +1,7 @@
 """
 @author: Iván Pérez
-         ivan.perezd314@gmail.com
+         ivan.perez.dona@gmail.com
 """
-
 
 from cmath import nan
 import numpy as np
@@ -34,7 +33,7 @@ def sign(x): return math.copysign(1, x)
 zeroContourPoints = []
 
 ##### NOT ENOUGH DATA STRING ##### 
-notEnoughData = "Not enough data"
+notEnoughData = "NaN"
 
 ##########################################################################################
 ###############################         GRIDS         ####################################
@@ -423,7 +422,7 @@ def checkClosestPoint(x, y):
 def checkClosestPointSpeed(point):
 
     '''
-    Calculates the closest point (in DEM) and returns the speed associated, given a point parameter (x,y)
+    Calculates the closest point (in DEM) and returns the satellite speed associated, given a point parameter (x,y)
     '''
     speedDataPath = 'datafiles/vel_interpolada_DEM_ordenada.dat'
     with open(speedDataPath, 'r') as velFile:
@@ -470,7 +469,7 @@ def computeMonthlySpeeds():
                 if (day == 28 and month == 2):  # february
                     for i, v in enumerate(addVel):
                         if (nanIndex[i] >= 15):
-                            normVel[i] = "NotEnoughData"
+                            normVel[i] = "NaN"
                         else:
                             normVel[i] = v/(28-nanIndex[i])*TIME_STEP
                             
@@ -483,7 +482,7 @@ def computeMonthlySpeeds():
                 elif (day == 30 and (month == 4 or month == 6 or month == 9 or month == 11)):  # month of 30 days
                     for i, v in enumerate(addVel):
                         if (nanIndex[i] >= 15):
-                            normVel[i] = "NotEnoughData"
+                            normVel[i] = "NaN"
                         else:
                             normVel[i] = v/(30-nanIndex[i])*TIME_STEP
                             
@@ -496,7 +495,7 @@ def computeMonthlySpeeds():
                 elif (day == 31):  # month of 31 days
                     for i, v in enumerate(addVel):
                         if (nanIndex[i] >= 15):
-                            normVel[i] = "NotEnoughData"
+                            normVel[i] = "NaN"
                         else:
                             normVel[i] = v/(31-nanIndex[i])*TIME_STEP
                             
@@ -505,6 +504,25 @@ def computeMonthlySpeeds():
                     addVel, normVel, nanIndex = [0.0 for i in range(0,16)], [0.0 for i in range(0,16)], \
                          [0 for i in range(0,16)]
                     continue
+
+def calculateMeanSpeedWhenNaN(indexOfStick):
+    '''
+    Calculates mean monthly speed of a concrete stick to use it in case there is not enough data to compute it.
+    '''
+    with open('datafiles/vel_darek_mensuales_30.4375_normalized.dat', 'r') as velMensuales:
+        velValues = np.loadtxt(velMensuales)
+        months = len(velValues)
+        averageSpeed = [0.0 for i in range(0, len(velValues[0]))]
+        dataNaN = [0 for i in range(0, len(velValues[0]))]
+        for i, row in enumerate(velValues):
+            for j, vel in enumerate(row):
+                if (np.isnan(vel)):
+                    dataNaN[j] += 1
+                    continue
+                averageSpeed[j] += vel
+        for k, vel in enumerate(averageSpeed):
+            averageSpeed[k] = vel/(months - dataNaN[k])
+        return averageSpeed[indexOfStick]
 
 def updateStickPosition(gradX, gradY):
 
@@ -527,7 +545,7 @@ def updateStickPosition(gradX, gradY):
             stickPositions.append((float(line[0]), float(line[1])))
             grad.append((float(line[len(line)-2]), float(line[len(line)-1])))
 
-    with open('datafiles/vel_darek_mensuales_30.4375_normalized.dat.dat', 'r') as velMensuales:
+    with open('datafiles/vel_darek_mensuales_30.4375_normalized.dat', 'r') as velMensuales:
         with open('updated_stick_positions.dat', 'w') as updatedStickPositions:
 
             for line in velMensuales.readlines():
@@ -540,14 +558,14 @@ def updateStickPosition(gradX, gradY):
                         (math.sqrt(gradXvector**2 + gradYvector**2))
                     sine = gradYvector / \
                         (math.sqrt(gradXvector**2 + gradYvector**2))
-                    # TODO: modify this. It's not correct
-                    if (line[i] == 'nan'):
-                        # 21 = number of months between January 2013 to August 2014
+                    # Here we are checking if there is enough data to compute the speed.
+                    # As we can see, if there is not enough data, we are computing the speed
+                    # by using the average speed of prior and following month.
+                    if (line[i] == notEnoughData):
                         xCoord = pos[0] + \
-                            checkClosestPointSpeed((pos[0], pos[1]))/21*cosine
-                        # 21 = number of months between January 2013 to August 2014
+                            calculateMeanSpeedWhenNaN(i)*cosine
                         yCoord = pos[1] + \
-                            checkClosestPointSpeed((pos[0], pos[1]))/21*sine
+                            calculateMeanSpeedWhenNaN(i)*sine
                     else:
                         xCoord = pos[0] + float(line[i])*cosine
                         yCoord = pos[1] + float(line[i])*sine
@@ -558,9 +576,7 @@ def updateStickPosition(gradX, gradY):
                     f" {'  '.join(map(str,stickPositions))} \n")
 
 
-
 def roundAndSelect():
-
     '''
     Creates Hansbreen contour in DEM coordinates
     '''
