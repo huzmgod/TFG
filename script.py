@@ -810,25 +810,41 @@ def yearlyStickSpeed():
     '''
     Calculates speed (m/year) from stick speed values
     '''
-    speeds = []
-    for i in range(0, 16):
-        speeds.append(0.0)
+    speeds = [0.0 for i in range(0,16)]
+    number = [0 for i in range(0,16)]
 
     monthCount = 0
-    with open('vel_darek_mensuales.dat', 'r') as monthlySpeed:
-        with open('vel_darek_anuales.dat', 'w') as yearlySpeed:
-            for line in monthlySpeed.readlines():
-                line = line.split('  ')
-                monthCount += 1
-                for i, _ in enumerate(speeds):
-                    if (line[i] == 'nan'):
-                        speeds[i] = -0.0
-                    else:
-                        speeds[i] = speeds[i] + float(line[i])
-                if(monthCount == 12):
-                    yearlySpeed.write(f" {'  '.join(map(str,speeds))} \n")
-                    monthCount = 0
+    with open('datafiles/vel_darek_mensuales_30.4375_normalized.dat', 'r') as monthlySpeed:
+        with open('datafiles/vel_darek_anuales.dat', 'w') as yearlySpeed:
 
+            mSpeeds = np.loadtxt(monthlySpeed)
+            monthCount = 4
+            for i, row in enumerate(mSpeeds):
+                monthCount += 1
+                for j, value in enumerate(row):
+                    if (np.isnan(value)):
+                        speeds[j] += 0.0
+                    else:
+                        speeds[j] += value
+                        number[j] += 1
+                    
+                    # 12 months computed
+                    if(monthCount % 12 == 0 and j == len(speeds)-1):
+                        
+                        for k, _ in enumerate(row):
+                        
+                            print(number[k])
+                            if (number[k] < 8):
+                                speeds[k] = "NaN"
+                            else:
+                                # try to normalize anual speed when data loss is not too high
+                                speeds[k] = speeds[k]/(number[k])*12
+                            print(speeds)
+                        
+                        yearlySpeed.write(f"{' '.join(map(str,speeds))}\n")
+                        speeds = [0.0 for i in range(0,16)]
+                        number = [0 for i in range(0,16)]
+                        
 
 def monthlySticksResidue():
 
@@ -837,8 +853,8 @@ def monthlySticksResidue():
     '''
     yearAvgSpeeds, residues = np.zeros((6,16),dtype=float), np.zeros((73,16), dtype=float)
     
-    with open('vel_darek_anuales.dat', 'r') as yearlySpeed:
-        with open('vel_darek_mensuales.dat', 'r') as monthlySpeed:
+    with open('datafiles/vel_darek_anuales.dat', 'r') as yearlySpeed:
+        with open('datafiles/vel_darek_mensuales_30.4375_normalized.dat', 'r') as monthlySpeed:
             with open('residuos_mensuales.dat', 'w') as monthlyResidues:
                 yearCount = 0
                 for row in yearlySpeed.readlines():
@@ -857,7 +873,7 @@ def monthlySticksResidue():
                     for j, _ in enumerate(residues[0]):
                         if((month+1) % 12 == 0):
                             year = (month+1)//12-1
-                            if (line[j] == 'nan'):
+                            if (line[j] == 'NaN'):
                                 residues[month,j] = np.nan
                             else:
                                 residues[month,j] = float(line[j])-yearAvgSpeeds[year,j]
@@ -939,17 +955,17 @@ def main():
 
     softMetrics = metros_gradiente/(2*GRID_DIST)
 
-    #speedComponentsDem(gradXfileDat, gradYfileDat)
+    # speedComponentsDem(gradXfileDat, gradYfileDat)
     # gradientSofter(gradYfile)
     # printGradient(gradXfile, f"{gradYfile}_soft")
     # getGradientInStickCoordinates(gradXfileDat, gradYfileDat)
     # computeMonthlySpeeds()
-    updateStickPosition(gradXfileDat, gradYfileDat)
-    stickPositionsPlotter()
+    # updateStickPosition(gradXfileDat, gradYfileDat)
+    # stickPositionsPlotter()
     
     # monthlySticksResidue()
     # componentSplitter()
-    # yearlyStickSpeed()
+    yearlyStickSpeed()
     # roundAndSelect()
     # interpolate()
     
