@@ -849,9 +849,32 @@ def yearlyStickSpeed():
 def monthlySticksResidue():
 
     '''
-    Computes monthly residues
+    Computes monthly residues. We will use this as input for ordinaryKrigingResidues.py
     '''
-    yearAvgSpeeds, residues = np.zeros((6,16),dtype=float), np.zeros((73,16), dtype=float)
+
+    # Cargar datos de los archivos
+    yearlySpeed = np.loadtxt('datafiles/vel_darek_anuales.dat')
+    monthlySpeed = np.loadtxt('datafiles/vel_darek_mensuales_30.4375_normalized.dat')
+
+    # Crear matriz para los resultados
+    residues = np.zeros(monthlySpeed.shape)
+
+    # Calcular valores promedio anuales
+    yearAvgSpeeds = yearlySpeed / 12
+    yearAvgSpeeds[np.isnan(yearAvgSpeeds) | (np.sign(yearAvgSpeeds) == -1)] = np.nan
+
+    # Calcular residuos mensuales
+    for month in range(monthlySpeed.shape[0]):
+        year = month // 12
+        if month % 12 == 0:
+            residues[month] = np.nan_to_num(monthlySpeed[month] - yearAvgSpeeds[year])
+        else:
+            residues[month] = np.nan_to_num(monthlySpeed[month] - yearAvgSpeeds[year])
+
+    # Escribir los resultados en un archivo de texto
+    np.savetxt('residuos_mensuales.dat', residues, fmt='%.4f')
+
+    """ yearAvgSpeeds, residues = np.zeros((6,16),dtype=float), np.zeros((73,16), dtype=float)
     
     with open('datafiles/vel_darek_anuales.dat', 'r') as yearlySpeed:
         with open('datafiles/vel_darek_mensuales_30.4375_normalized.dat', 'r') as monthlySpeed:
@@ -860,7 +883,7 @@ def monthlySticksResidue():
                 for row in yearlySpeed.readlines():
                     row = row.split('  ')
                     for j, _ in enumerate(yearAvgSpeeds[0]):
-                        if (row[j] == 'nan' or sign(float(row[j]))==-1.0):
+                        if (row[j] == 'NaN' or sign(float(row[j]))==-1.0):
                             yearAvgSpeeds[yearCount,j] = np.nan
                         else:
                             
@@ -877,14 +900,14 @@ def monthlySticksResidue():
                                 residues[month,j] = np.nan
                             else:
                                 residues[month,j] = float(line[j])-yearAvgSpeeds[year,j]
-                        elif (line[j] == 'nan'):
+                        elif (line[j] == 'NaN'):
                             residues[month,j] = np.nan
                         else:
                             residues[month,j] = float(line[j])-yearAvgSpeeds[year,j]
                     print(month)
                     month += 1
             
-                np.savetxt(monthlyResidues, residues, fmt='%.4f')
+                np.savetxt(monthlyResidues, residues, fmt='%.4f') """
 
 def componentSplitter():
     '''
@@ -916,11 +939,11 @@ def componentSplitter():
 
         gradientXPath = 'gradients/custom_gradient_x_600m_interval_2plot.dat'
         gradientYPath = 'gradients/custom_gradient_y_600m_interval_2plot.dat'
-        with open(f'speedsAfterKrig/speedModules/speedsAfterBayesianKriging_{year}_{dict.get(dictmonth)}.dat', 'r') as speeds:
+        with open(f'speedsAfterKrig/fixedSpeedModules/speedsAfterBayesianKriging_{year}_{dict.get(dictmonth)}.dat', 'r') as speeds:
             with open(gradientXPath, 'r') as xGrad:
                 with open(gradientYPath, 'r') as yGrad:
-                    with open(f'speedsAfterKrig/components/speedXComponentAfterBayesianKriging_{year}_{dict.get(dictmonth)}.dat', 'w') as xSpeedFile:
-                        with open(f'speedsAfterKrig/components/speedYComponentAfterBayesianKriging_{year}_{dict.get(dictmonth)}.dat', 'w') as ySpeedFile: 
+                    with open(f'speedsAfterKrig/fixedComponents/speedXComponentAfterBayesianKriging_{year}_{dict.get(dictmonth)}.dat', 'w') as xSpeedFile:
+                        with open(f'speedsAfterKrig/fixedComponents/speedYComponentAfterBayesianKriging_{year}_{dict.get(dictmonth)}.dat', 'w') as ySpeedFile: 
                     
                             speeds = np.loadtxt(speeds)
                             xGrad = np.loadtxt(xGrad)
@@ -962,10 +985,11 @@ def main():
     # computeMonthlySpeeds()
     # updateStickPosition(gradXfileDat, gradYfileDat)
     # stickPositionsPlotter()
+    # yearlyStickSpeed()
     
-    # monthlySticksResidue()
+    monthlySticksResidue()
     # componentSplitter()
-    yearlyStickSpeed()
+    
     # roundAndSelect()
     # interpolate()
     

@@ -42,21 +42,18 @@ def krigingBayesiano():
     '''
     year = 2005
     priorYear = year
-    priorMonth = 1
-    month = 1
-
+    priorMonth = 1 #data from January 2013 to August 2014
+    month = 5
+   
     for i in range(5,78):
+        
+        if (month == 12):
+            month = 1
+        else: 
+            month += 1
 
-        if(i % 12 == 0): #december
-            month = 12
-        else:
-            month = i % 12 
-
-        if( month == 1):
-            priorMonth = 12
-        else:
-            priorMonth = month -1
-
+        priorMonth = month - 1 if month > 1 else 12
+        
         dict = {
             1: "Jan",
             2: "Feb",
@@ -72,9 +69,9 @@ def krigingBayesiano():
             12:"Dec"
         }
 
-        residuesPath = f'speedsAfterKrig/residues/output_residuos_{i}_{year}_2plot.dat'
+        residuesPath = f'speedsAfterKrig/fixedResidues/output_residuos_{year}_{month}_2plot.dat'
         firstPriorPath = 'datafiles/vel_interpolada_DEM_ordenada.dat'
-        resultPath = f'speedsAfterKrig/speedModules/speedsAfterBayesianKriging_{year}_{dict.get(month)}.dat'
+        resultPath = f'speedsAfterKrig/fixedSpeedModules/speedsAfterBayesianKriging_{year}_{dict.get(month)}.dat'
         try:
             priorPath = f'speedsAfterKrig/speedModules/speedsAfterBayesianKriging_{priorYear}_{dict.get(priorMonth)}.dat'
             if(year != priorYear):
@@ -105,12 +102,15 @@ def krigingBayesiano():
                             y = resValues[j][1]
                             
                             speed = resValues[j][2] + priorValues[j][2]
-                            if(speed < 0 or speed > 100):
-                                print(month)
-                                print(year)
-                                print(resValues[j][2])
-                                print(priorValues[j][2])
+                            if(speed > 30):
+                                print(f"X: {x}")
+                                print(f"Y: {y}")
+                                print(f"PRIORVALUES: {priorValues[j][2]}")
+                                print(f"RESIDUES: {resValues[j][2]}")
+                                print(f"SPEED: {speed}")
                             results.write(f"{x} {y} {speed} \n")
+                        print(dict.get(month))
+                        print(year)
         if(month == 12):
             year +=1
             

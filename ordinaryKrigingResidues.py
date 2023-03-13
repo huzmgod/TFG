@@ -5,10 +5,8 @@ import sys
 '''
     Write pykrige installation path using the following example to avoid pykrige problems, where USER is your system username
 '''
-userPath = "/home/USER/miniconda3/pkgs/pykrige-1.6.1-py39h3811e60_1/lib/python3.9/site-packages/pykrige"
-sys.path.append(userPath)
-from ok import OrdinaryKriging
-import kriging_tools as kt
+from pykrige.ok import OrdinaryKriging
+import pykrige.kriging_tools as kt
 import numpy as np
 
 
@@ -27,16 +25,16 @@ GRID_DIST = 50
 
 with open('updated_stick_position_2plot.dat', 'r') as stickPositions:
     with open('residuos_mensuales.dat', 'r') as residues:
-        with open('zero_contour_points_Dem_50_points_random.dat', 'r') as contourZeros:
+        with open('datafiles/zero_contour_points_Dem_40_points.dat', 'r') as contourZeros:
             zeros = np.loadtxt(contourZeros)
             resMatrix = np.loadtxt(residues)
-            month= 5
+            month = 5 #starting data month (May)
             equivalentMonth = month
             year = 2005
             for position in stickPositions.readlines():
                 plot = False
-                nlags = 6
-                if(month == 45): 
+                nlags = 20
+                if(month == 9 and year == 2008): 
                     plot = True
                     nlags = 56
                 print(f'MONTH = {month}')
@@ -48,19 +46,24 @@ with open('updated_stick_position_2plot.dat', 'r') as stickPositions:
                     krigData.append(inputData)
                 row = month - 5 
                 positions = position.split(',  ,')
+                # print(f'POSITIONS = {positions}')
                 for i in range(0, 16):
                     stick1 = str(positions[i].split(', '))
                     for char in ['[', ']', ' ', "'", "\n"]:
                         stick1 = stick1.replace(char, "")
+                    # print(f'STICK1 = {stick1}')
                     coords = stick1.split(',')
+                    if (coords[0] == ''): coords.pop(0)
+                    #format deletion, not much importance
+                    # print(f'COORDS = {coords}')
                     xCoord = float(coords[0])
                     yCoord = float(coords[1])
                     valueRes = resMatrix[row][i]
-                    # print(f'{valueRes} {str(valueRes) =="nan"}')
-                    if (str(valueRes) =="nan" or valueRes == nan \
-                        or str(xCoord)=="nan" or str(yCoord)=="nan"): #associated to undefined stick speed
+                    if (np.isnan(valueRes) \
+                        or np.isnan(xCoord)): #associated to undefined stick speed
                         continue
                     data = [xCoord, yCoord, valueRes]
+                    print(f'DATA = {data}')
                     krigData.append(data)
                 
                 krigData = np.array(krigData)
@@ -71,9 +74,10 @@ with open('updated_stick_position_2plot.dat', 'r') as stickPositions:
                     krigData[:, 2],
                     variogram_model="spherical",
                     nlags = nlags,
-                    verbose=False,
-                    enable_plotting=plot,
-                    exact_values = False
+                    verbose = False,
+                    enable_plotting = plot,
+                    exact_values = False,
+                    pseudo_inv = True
                 )
                 
                 ###############################################################################
@@ -86,21 +90,21 @@ with open('updated_stick_position_2plot.dat', 'r') as stickPositions:
                 # ###############################################################################
                 # # Writes the kriged grid to an ASCII grid file and plot it.
 
-                kt.write_asc_grid(xDemGrid, yDemGrid, z, filename=f"speedsAfterKrig/output_residuos_{month}_{year}.asc")
+                kt.write_asc_grid(xDemGrid, yDemGrid, z, filename=f"speedsAfterKrig/fixedResidues/output_residuos_{year}_{month}.asc")
                 # plt.imshow(z)
                 # plt.show()
 
-                with open(f'speedsAfterKrig/output_residuos_{month}_{year}.asc', 'r') as kriggedResInDem:
-                    with open(f'speedsAfterKrig/output_residuos_{month}_{year}_clean.dat', 'w') as cleanRes:
+                with open(f'speedsAfterKrig/fixedResidues/output_residuos_{year}_{month}.asc', 'r') as kriggedResInDem:
+                    with open(f'speedsAfterKrig/fixedResidues/output_residuos_{year}_{month}_clean.dat', 'w') as cleanRes:
                         i=0
                         for line in kriggedResInDem.readlines():
-                            if(i>6):
+                            if(i > 6):
                                 cleanRes.write(line)
                             i+=1
 
 
-                with open(f'speedsAfterKrig/output_residuos_{month}_{year}_clean.dat', 'r') as kriggedResInDem:
-                    with open(f'speedsAfterKrig/output_residuos_{month}_{year}_2plot.dat', 'w') as plottedRes:
+                with open(f'speedsAfterKrig/fixedResidues/output_residuos_{year}_{month}_clean.dat', 'r') as kriggedResInDem:
+                    with open(f'speedsAfterKrig/fixedResidues/output_residuos_{year}_{month}_2plot.dat', 'w') as plottedRes:
                         residuosDem=np.loadtxt(kriggedResInDem)
                         currentY = yFinalValue
                         for i, _ in enumerate(residuosDem):
@@ -111,8 +115,9 @@ with open('updated_stick_position_2plot.dat', 'r') as stickPositions:
                             currentY -= GRID_DIST
 
                 month += 1
-                if((month % 12) -1== 0):
+                if((month % 12) -1 == 0):
                     year +=1
+                    month = 1
                     
                     
                 
