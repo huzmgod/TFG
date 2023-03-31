@@ -32,7 +32,7 @@ def sign(x): return math.copysign(1, x)
 ##### ZERO CONTOUR POINTS #####
 zeroContourPoints = []
 
-##### NOT ENOUGH DATA STRING ##### 
+##### NOT ENOUGH DATA STRING #####
 notEnoughData = "NaN"
 
 ##########################################################################################
@@ -89,7 +89,7 @@ def storage():
 def interpolate():
 
     '''
-        This function interpolates speed values (satellite) into DEM grid
+        This function interpolates all speed values (from satellite) into DEM grid
     '''
     # Weighted average distance interpolation
     speedDataPath = "datafiles/vel_interpolada_DEM_ordenada.dat"
@@ -162,12 +162,77 @@ def interpolate():
                 outputSpeed.write(
                     f"{coordXdem}  {coordYdem}  {p}  {distmin}  {speed}  {estimatedSpeed} \n")
 
+def interpolateDEMIntoPoint(x, y):
+
+    '''
+    This function interpolates DEM speed values into a given point using IDW.
+    x: float, X coordinate of the given point
+    y: float, Y coordinate of the given point
+    '''
+
+    speedDataPath = "datafiles/vel_interpolada_DEM_ordenada.dat"
+    dem_data = np.loadtxt(speedDataPath)
+    xDemGrid, yDemGrid, demSpeeds = dem_data[:, 0], dem_data[:, 1], dem_data[:, 2]
+
+    distmin = [0.0, 0.0, 0.0]
+    speed = [0.0, 0.0, 0.0]
+    p = [(0.0, 0.0), (0.0, 0.0), (0.0, 0.0)]
+    denom = 0.0
+    estimatedSpeed = 0.0
+    closePoint = False
+
+    for i, (coordXdem, coordYdem, modSpeed) in enumerate(zip(xDemGrid, yDemGrid, demSpeeds)):
+        dist = math.sqrt((x - coordXdem) ** 2 + (y - coordYdem) ** 2)
+
+        if(distmin[0] == 0):  # first entry
+            distmin[0] = dist
+            p[0] = (coordXdem, coordYdem)
+            speed[0] = modSpeed
+        elif(dist < distmin[0]):  # getting minimum distance
+            distmin[2] = distmin[1]
+            p[2] = p[1]
+            speed[2] = speed[1]
+            distmin[1] = distmin[0]
+            p[1] = p[0]
+            speed[1] = speed[0]
+            distmin[0] = dist
+            p[0] = (coordXdem, coordYdem)
+            speed[0] = modSpeed
+        elif(distmin[1] == 0):  # second entry
+            distmin[1] = dist
+            p[1] = (coordXdem, coordYdem)
+            speed[1] = modSpeed
+        elif(dist < distmin[1]):  # getting minimum distance
+            distmin[2] = distmin[1]
+            p[2] = p[1]
+            speed[2] = speed[1]
+            distmin[1] = dist
+            p[1] = (coordXdem, coordYdem)
+            speed[1] = modSpeed
+        elif(distmin[2] == 0 or dist < distmin[2]):  # third entry
+            distmin[2] = dist
+            p[2] = (coordXdem, coordYdem)
+            speed[2] = modSpeed
+
+    for i, dist in enumerate(distmin):
+        if(dist < 0.5):
+            estimatedSpeed = speed[i]
+            closePoint = True
+            break
+        else:
+            denom += 1 / dist ** 2
+
+    if(closePoint == False):
+        for i, dist in enumerate(distmin):
+            estimatedSpeed += 1 / dist ** 2 / denom * speed[i]
+
+    return estimatedSpeed
 
 
 def gradient():
 
     '''
-        This function calculates gradient(Z) in every (x,y) of DEM. 
+        This function calculates gradient(Z) in every (x,y) of DEM.
         Not used in any case along the code because h is not set properly in numpy.
         Check customGradient() instead
     '''
@@ -179,9 +244,8 @@ def gradient():
             np.savetxt(gradYFile, grady, fmt='%.4f')
 
 
-
 def speedComponentsDem(gradX, gradY):  # gradX and gradY are .dat files in matrix form
-    
+
     '''
         This method calculates speed components for every single coordinate in DEM, based on gradient values
     '''
@@ -230,7 +294,7 @@ def speedComponentsDem(gradX, gradY):  # gradX and gradY are .dat files in matri
 
 
 def getGradientInStickCoordinates(filenameX, filenameY):
-    
+
     '''
         Calculates gradients for all sticks in first instance, since we have the initial position of all 16 sticks
         in the file posiciones_tyczki.dat. Those gradient values are saved in gradient_in_stick.dat with the format:
@@ -460,7 +524,7 @@ def computeMonthlySpeeds():
                 day = int(vel[k][len(vel[k])-1])
                 month = int(vel[k][len(vel[k])-2])
                 year = int(vel[k][len(vel[k])-3])
-                
+
                 for i in range(0,16):
                     if(np.isnan(vel[k][i])):
                         nanIndex[i] += 1
@@ -472,7 +536,7 @@ def computeMonthlySpeeds():
                             normVel[i] = "NaN"
                         else:
                             normVel[i] = v/(28-nanIndex[i])*TIME_STEP
-                            
+
                     velMensuales.write(f"{'  '.join(map(str,normVel))} \n")
                     print(day, month, year, nanIndex)
                     addVel, normVel, nanIndex = [0.0 for i in range(0,16)], [0.0 for i in range(0,16)], \
@@ -485,7 +549,7 @@ def computeMonthlySpeeds():
                             normVel[i] = "NaN"
                         else:
                             normVel[i] = v/(30-nanIndex[i])*TIME_STEP
-                            
+
                     velMensuales.write(f"{'  '.join(map(str,normVel))} \n")
                     print(day, month, year, nanIndex)
                     addVel, normVel, nanIndex = [0.0 for i in range(0,16)], [0.0 for i in range(0,16)], \
@@ -498,7 +562,7 @@ def computeMonthlySpeeds():
                             normVel[i] = "NaN"
                         else:
                             normVel[i] = v/(31-nanIndex[i])*TIME_STEP
-                            
+
                     velMensuales.write(f"{'  '.join(map(str,normVel))} \n")
                     print(day, month, year, nanIndex)
                     addVel, normVel, nanIndex = [0.0 for i in range(0,16)], [0.0 for i in range(0,16)], \
@@ -827,12 +891,12 @@ def yearlyStickSpeed():
                     else:
                         speeds[j] += value
                         number[j] += 1
-                    
+
                     # 12 months computed
                     if(monthCount % 12 == 0 and j == len(speeds)-1):
-                        
+
                         for k, _ in enumerate(row):
-                        
+
                             print(number[k])
                             if (number[k] < 8):
                                 speeds[k] = "NaN"
@@ -840,11 +904,11 @@ def yearlyStickSpeed():
                                 # try to normalize anual speed when data loss is not too high
                                 speeds[k] = speeds[k]/(number[k])*12
                             print(speeds)
-                        
+
                         yearlySpeed.write(f"{' '.join(map(str,speeds))}\n")
                         speeds = [0.0 for i in range(0,16)]
                         number = [0 for i in range(0,16)]
-                        
+
 
 def monthlySticksResidue():
 
@@ -852,18 +916,17 @@ def monthlySticksResidue():
     Computes monthly residues. We will use this as input for ordinaryKrigingResidues.py
     '''
 
-    # Cargar datos de los archivos
     yearlySpeed = np.loadtxt('datafiles/vel_darek_anuales.dat')
     monthlySpeed = np.loadtxt('datafiles/vel_darek_mensuales_30.4375_normalized.dat')
 
-    # Crear matriz para los resultados
+    # Matrix
     residues = np.zeros(monthlySpeed.shape)
 
-    # Calcular valores promedio anuales
+    # Mean values
     yearAvgSpeeds = yearlySpeed / 12
     yearAvgSpeeds[np.isnan(yearAvgSpeeds) | (np.sign(yearAvgSpeeds) == -1)] = np.nan
 
-    # Calcular residuos mensuales
+    # Residues
     for month in range(monthlySpeed.shape[0]):
         year = month // 12
         if month % 12 == 0:
@@ -874,40 +937,19 @@ def monthlySticksResidue():
     # Escribir los resultados en un archivo de texto
     np.savetxt('residuos_mensuales.dat', residues, fmt='%.4f')
 
-    """ yearAvgSpeeds, residues = np.zeros((6,16),dtype=float), np.zeros((73,16), dtype=float)
-    
-    with open('datafiles/vel_darek_anuales.dat', 'r') as yearlySpeed:
-        with open('datafiles/vel_darek_mensuales_30.4375_normalized.dat', 'r') as monthlySpeed:
-            with open('residuos_mensuales.dat', 'w') as monthlyResidues:
-                yearCount = 0
-                for row in yearlySpeed.readlines():
-                    row = row.split('  ')
-                    for j, _ in enumerate(yearAvgSpeeds[0]):
-                        if (row[j] == 'NaN' or sign(float(row[j]))==-1.0):
-                            yearAvgSpeeds[yearCount,j] = np.nan
-                        else:
-                            
-                            yearAvgSpeeds[yearCount,j] = float(row[j])/12
-                    yearCount += 1  
-                month = 0
-                for line in monthlySpeed.readlines():
-                    line = line.split('  ')
-                    year = 0
-                    for j, _ in enumerate(residues[0]):
-                        if((month+1) % 12 == 0):
-                            year = (month+1)//12-1
-                            if (line[j] == 'NaN'):
-                                residues[month,j] = np.nan
-                            else:
-                                residues[month,j] = float(line[j])-yearAvgSpeeds[year,j]
-                        elif (line[j] == 'NaN'):
-                            residues[month,j] = np.nan
-                        else:
-                            residues[month,j] = float(line[j])-yearAvgSpeeds[year,j]
-                    print(month)
-                    month += 1
-            
-                np.savetxt(monthlyResidues, residues, fmt='%.4f') """
+
+def fixedResidue2Kriging():
+
+    '''
+    For each month, calculates the residues between the monthly speed and the prior monthly speed (only sticks).
+    Then, it writes the residue in a file to be used as input for ordinaryKrigingResidues.py, which interpolates the residues
+    into the whole DEM.
+    Right after, we add the interpolated residues to the prior speed values to get the final speed values.
+    '''
+
+    monthlySpeed = np.loadtxt('datafiles/vel_darek_mensuales_30.4375_normalized.dat')
+
+
 
 def componentSplitter():
     '''
@@ -943,8 +985,8 @@ def componentSplitter():
             with open(gradientXPath, 'r') as xGrad:
                 with open(gradientYPath, 'r') as yGrad:
                     with open(f'speedsAfterKrig/fixedComponents/speedXComponentAfterBayesianKriging_{year}_{dict.get(dictmonth)}.dat', 'w') as xSpeedFile:
-                        with open(f'speedsAfterKrig/fixedComponents/speedYComponentAfterBayesianKriging_{year}_{dict.get(dictmonth)}.dat', 'w') as ySpeedFile: 
-                    
+                        with open(f'speedsAfterKrig/fixedComponents/speedYComponentAfterBayesianKriging_{year}_{dict.get(dictmonth)}.dat', 'w') as ySpeedFile:
+
                             speeds = np.loadtxt(speeds)
                             xGrad = np.loadtxt(xGrad)
                             yGrad = np.loadtxt(yGrad)
@@ -986,13 +1028,15 @@ def main():
     # updateStickPosition(gradXfileDat, gradYfileDat)
     # stickPositionsPlotter()
     # yearlyStickSpeed()
-    
-    monthlySticksResidue()
+
+    # monthlySticksResidue()
     # componentSplitter()
-    
+
     # roundAndSelect()
     # interpolate()
-    
+
+    print(interpolateDEMIntoPoint(515005.660,8548815.070))
+
 
 if __name__ == '__main__':
     main()
