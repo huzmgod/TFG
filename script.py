@@ -1066,8 +1066,7 @@ def fixedResidue2Kriging():
     into the whole DEM.
     Right after, we add the interpolated residues to the prior speed values to get the final speed values.
     '''
-    monthlySpeedValues = np.loadtxt(
-        'datafiles/vel_darek_mensuales_30.4375_normalized.dat')
+    monthlySpeedValues = np.loadtxt('datafiles/vel_darek_mensuales_30.4375_normalized.dat')
     priorSpeedValues = np.loadtxt('datafiles/vel_interpolada_DEM_ordenada.dat')
     speedValues = np.zeros(priorSpeedValues.shape)
 
@@ -1082,9 +1081,9 @@ def fixedResidue2Kriging():
         if (monthKey == 1):
             for j, value in enumerate(monthlySpeedValues[monthKey-1]):
                 if (np.isnan(value)):
-                    residues[0][j] = "NaN"
+                    residues[monthKey-1][j] = "NaN"
                 else:
-                    residues[0][j] = value - \
+                    residues[monthKey-1][j] = value - \
                         interpolateDEMSpeedsIntoPoint(
                             positions[j][0], positions[j][1])/12
 
@@ -1094,8 +1093,8 @@ def fixedResidue2Kriging():
                 if (np.isnan(value)):
                     residues[monthKey-1][j] = "NaN"
                 else:
-                    residues[monthKey-1][j] = value - interpolateDEMSpeedsIntoPoint(positions[j][0], positions[j][1],
-                                                                                    f"speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey-1)]}_2plot.dat")
+                    residues[monthKey-1][j] = value - interpolateDEMSpeedsIntoPoint(positions[j][0], positions[j][1], \
+                     f"speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey-1)]}_2plot.dat")
 
     def ordinaryKriging(positions, residues, monthKey):
 
@@ -1114,7 +1113,7 @@ def fixedResidue2Kriging():
                 coords = positions[i][0], positions[i][1]
                 xCoord = float(coords[0])
                 yCoord = float(coords[1])
-                valueRes = resMatrix[0][i]
+                valueRes = resMatrix[monthKey-1][i]
                 if (np.isnan(valueRes)
                         or np.isnan(xCoord)):  # associated to undefined stick speed
                     continue
@@ -1135,15 +1134,12 @@ def fixedResidue2Kriging():
                 pseudo_inv=True
             )
 
-            ###############################################################################
             # Creates the kriged grid and the variance grid. Allows for kriging on a rectangular
             # grid of points, on a masked rectangular grid of points, or with arbitrary points.
-            # (See OrdinaryKriging.__doc__ for more information.)
 
             z, ss = OK.execute("grid", xDemGrid, yDemGrid)
 
-            # ###############################################################################
-            # # Writes the kriged grid to an ASCII grid file and plot it.
+            # Writes the kriged grid to an ASCII grid file and plot it.
 
             kt.write_asc_grid(
                 xDemGrid, yDemGrid, z, filename=f"speedsAfterKrig/fixedResidues2/output_residuos_{calendar[str(monthKey)]}.asc")
@@ -1244,36 +1240,16 @@ def componentSplitter():
     Calculates components from speed modules given gradient values.
 
     '''
-    year = 2005
-    for month in range(5, 78):
+    gradientXPath = 'gradients/custom_gradient_x_600m_interval_2plot.dat'
+    gradientYPath = 'gradients/custom_gradient_y_600m_interval_2plot.dat'
 
-        dict = {
-            1: "Jan",
-            2: "Feb",
-            3: "Mar",
-            4: "Apr",
-            5: "May",
-            6: "Jun",
-            7: "Jul",
-            8: "Aug",
-            9: "Sep",
-            10: "Oct",
-            11: "Nov",
-            12: "Dec"
-        }
-        if (month % 12 == 0):
-            dictmonth = 12
-        else:
-            dictmonth = month % 12
+    for monthKey in range(1, 73):
 
-        gradientXPath = 'gradients/custom_gradient_x_600m_interval_2plot.dat'
-        gradientYPath = 'gradients/custom_gradient_y_600m_interval_2plot.dat'
-        with open(f'speedsAfterKrig/fixedSpeedModules/speedsAfterBayesianKriging_{year}_{dict.get(dictmonth)}.dat', 'r') as speeds:
+        with open(f'speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey)]}_2plot.dat', 'r') as speeds:
             with open(gradientXPath, 'r') as xGrad:
                 with open(gradientYPath, 'r') as yGrad:
-                    with open(f'speedsAfterKrig/fixedComponents/speedXComponentAfterBayesianKriging_{year}_{dict.get(dictmonth)}.dat', 'w') as xSpeedFile:
-                        with open(f'speedsAfterKrig/fixedComponents/speedYComponentAfterBayesianKriging_{year}_{dict.get(dictmonth)}.dat', 'w') as ySpeedFile:
-
+                    with open(f'speedsAfterKrig/fixedComponents2/speedXComponentAfterBayesianKriging_{calendar[str(monthKey)]}.dat', 'w') as xSpeedFile:
+                        with open(f'speedsAfterKrig/fixedComponents2/speedYComponentAfterBayesianKriging_{calendar[str(monthKey)]}.dat', 'w') as ySpeedFile:
                             speeds = np.loadtxt(speeds)
                             xGrad = np.loadtxt(xGrad)
                             yGrad = np.loadtxt(yGrad)
@@ -1291,9 +1267,7 @@ def componentSplitter():
                                     f"{speeds[i][0]} {speeds[i][1]} {xSpeed} \n")
                                 ySpeedFile.write(
                                     f"{speeds[i][0]} {speeds[i][1]} {ySpeed} \n")
-        print(f'MONTH={month} YEAR={year}')
-        if (month % 12 == 0):
-            year += 1
+
 
 
 def main():
@@ -1326,6 +1300,7 @@ def main():
     # interpolate()
 
     fixedResidue2Kriging()
+    componentSplitter()
 
 
 if __name__ == '__main__':
