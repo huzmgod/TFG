@@ -347,7 +347,7 @@ def interpolateDEMSpeedsIntoPoint(x, y, dataPath="datafiles/vel_interpolada_DEM_
         for i, dist in enumerate(distmin):
             estimatedSpeed += 1 / dist ** 2 / denom * speed[i]
 
-    return estimatedSpeed/12
+    return estimatedSpeed
 
 
 def gradient():
@@ -1086,7 +1086,7 @@ def fixedResidue2Kriging():
                 else:
                     residues[0][j] = value - \
                         interpolateDEMSpeedsIntoPoint(
-                            positions[j][0], positions[j][1])
+                            positions[j][0], positions[j][1])/12
 
         # Case other months
         else:
@@ -1172,18 +1172,25 @@ def fixedResidue2Kriging():
 
     # ordinaryKriging(positions, residues, monthKey)
 
-    def bayesianKriging():
+    def bayesianKriging(monthKey):
         ######## BAYESIAN KRIGING (RESIDUES) ########
         with open(f'speedsAfterKrig/fixedResidues2/output_residuos_{calendar[str(monthKey)]}_2plot.dat', 'r') as kriggedResidues:
             kriggedResidues = np.loadtxt(kriggedResidues)
-            for i, row in enumerate(speedValues):
-                speedValues[i][0] = priorSpeedValues[i][0]
-                speedValues[i][1] = priorSpeedValues[i][1]
-                speedValues[i][2] = priorSpeedValues[i][2] / \
-                    12 + kriggedResidues[i][2]
-            np.savetxt(
-                f'speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey)]}_2plot.dat', speedValues, fmt=['%.1f', '%.1f', '%.15f'])
-
+            if (monthKey == 1):
+                for i, row in enumerate(speedValues):
+                    speedValues[i][0] = priorSpeedValues[i][0]
+                    speedValues[i][1] = priorSpeedValues[i][1]
+                    speedValues[i][2] = priorSpeedValues[i][2]/12 + kriggedResidues[i][2]
+                np.savetxt(
+                    f'speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey)]}_2plot.dat', speedValues, fmt=['%.1f', '%.1f', '%.15f'])
+            else:
+                priorValues = np.loadtxt(f"speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey-1)]}_2plot.dat")
+                for i, row in enumerate(speedValues):
+                    speedValues[i][0] = priorValues[i][0]
+                    speedValues[i][1] = priorValues[i][1]
+                    speedValues[i][2] = priorValues[i][2] + kriggedResidues[i][2]
+                np.savetxt(
+                    f'speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey)]}_2plot.dat', speedValues, fmt=['%.1f', '%.1f', '%.15f'])
     # bayesianKriging()
 
     # What have we done so far?
@@ -1213,8 +1220,6 @@ def fixedResidue2Kriging():
                                    ** 2 + gradientValues[1]**2))
         return newPositions
 
-    # Update the positions
-    # positions = calculateNewStickPositions(monthKey, positions)
 
     # Now we automate the process for the 72 months.
     storedPositions = [[(0, 0) for i in range(16)] for j in range(72)]
@@ -1224,7 +1229,7 @@ def fixedResidue2Kriging():
             storedPositions[monthKey-1][i] = x, y
         calculateResidues(monthKey, positions)
         ordinaryKriging(positions, residues, monthKey)
-        bayesianKriging()
+        bayesianKriging(monthKey)
         positions = calculateNewStickPositions(monthKey, positions)
 
     with open('storedPositions.dat', 'w') as storedPositionsFile:
