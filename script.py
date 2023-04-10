@@ -1170,7 +1170,6 @@ def fixedResidue2Kriging():
                             currentX += GRID_DIST
                         currentY -= GRID_DIST
 
-    # ordinaryKriging(positions, residues, monthKey)
 
     def bayesianKriging(monthKey):
         ######## BAYESIAN KRIGING (RESIDUES) ########
@@ -1191,7 +1190,6 @@ def fixedResidue2Kriging():
                     speedValues[i][2] = priorValues[i][2] + kriggedResidues[i][2]
                 np.savetxt(
                     f'speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey)]}_2plot.dat', speedValues, fmt=['%.1f', '%.1f', '%.15f'])
-    # bayesianKriging()
 
     # What have we done so far?
     # We have calculated the residues of the first month (May 2005) and we have krigged them into the DEM.
