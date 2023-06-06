@@ -22,13 +22,8 @@ plt.show()
 Ajuste sobre una distribución normal
 """
 
-# Normalización
+""" # Normalización
 df['range_norm'] = (df['range'] - df['range'].mean()) / df['range'].std()
-
-# Ajusta una distribución normal
-mu, std = norm.fit(df['range'])
-D_norm, p_norm = kstest(df['range'], 'norm', args=(mu, std))
-chisq_norm, p_chi_norm = chisquare(df['range'])
 
 # Ajusta una distribución normal
 mu, std = norm.fit(df['range_norm'])
@@ -37,13 +32,19 @@ mu, std = norm.fit(df['range_norm'])
 plt.hist(df['range_norm'], bins=30, density=True, color='lightblue', alpha=0.6)
 
 # Crea un rango de valores x para la función de densidad de probabilidad
-x = np.linspace(df['range_norm'].min(), df['range_norm'].max(), 100)
+x = np.linspace(df['range_norm'].min(), df['range_norm'].max(), 100) """
+# Ajusta una distribución normal a los datos originales
+mu, std = norm.fit(df['range'])
 
-# Calcula y dibuja la función de densidad de probabilidad
+# Crea el histograma normalizado (density=True hace que la suma del área sea 1)
+plt.hist(df['range'], bins=30, density=True, color='lightblue', alpha=0.6)
+
+# Crea un rango de valores x para la función de densidad de probabilidad
+x = np.linspace(df['range'].min(), df['range'].max(), 100)
+
 p = norm.pdf(x, mu, std)
 plt.plot(x, p, 'k', linewidth=2)
 
-# Etiqueta los ejes
 plt.xlabel('Range (normalized)')
 plt.ylabel('Density')
 
@@ -56,10 +57,10 @@ print('Desviación estándar (std):', std)
 Residuos
 """
 # Calcula los valores ajustados
-df['fitted'] = norm.pdf(df['range_norm'], mu, std)
+df['fitted'] = norm.pdf(df['range'], mu, std)
 
 # Calcula los residuos
-df['residuals'] = df['range_norm'] - df['fitted']
+df['residuals'] = df['range'] - df['fitted']
 
 # Crea un histograma de los residuos
 plt.hist(df['residuals'], bins=30, density=True, color='lightblue', alpha=0.6)

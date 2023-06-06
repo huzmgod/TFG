@@ -10,7 +10,7 @@ df = df.dropna()
 
 with open(f'{absPath}ranges.dat', 'w') as rangesFile:
     with open(f'{absPath}sills.dat', 'w') as sillsFile:
-        for i in range(1000):
+        for i in range(10000):
             df_sample = df.sample(n=1000)
             #print(df_sample)
 
@@ -51,7 +51,7 @@ with open(f'{absPath}ranges.dat', 'w') as rangesFile:
                 return np.where(h < range_, nugget + sill * (1.5 * h / range_ - 0.5 * (h / range_) ** 3), nugget + sill)
 
             # variogram params
-            h = 8000
+            h = 7500
             bin_width = 300
 
             # Calcula el variograma experimental
