@@ -8,11 +8,11 @@ import scipy.stats as stats
 Carga de datos y plot de histograma
 """
 
-df = pd.read_csv('F:/EscritorioPC/BayesianKriging/TFG/newResearch/ranges.dat', sep='\s+', names=['range'])
+df = pd.read_csv('F:/EscritorioPC/BayesianKriging/TFG/newResearch/sills.dat', sep='\s+', names=['sill'])
 
 # Plots de rangos no normalizados
-""" plt.hist(df['range'], bins=30, color='lightblue')
-plt.xlabel('Range')
+""" plt.hist(df['sill'], bins=30, color='lightblue')
+plt.xlabel('sill')
 plt.ylabel('Frequency')
 plt.show() """
 
@@ -23,28 +23,28 @@ Ajuste sobre una distribución normal
 """
 
 # Normalización
-df['range_norm'] = (df['range'] - df['range'].mean()) / df['range'].std()
+df['sill_norm'] = (df['sill'] - df['sill'].mean()) / df['sill'].std()
 
 # Ajusta una distribución normal
-mu, std = norm.fit(df['range'])
-D_norm, p_norm = kstest(df['range'], 'norm', args=(mu, std))
-chisq_norm, p_chi_norm = chisquare(df['range'])
+mu, std = norm.fit(df['sill'])
+D_norm, p_norm = kstest(df['sill'], 'norm', args=(mu, std))
+chisq_norm, p_chi_norm = chisquare(df['sill'])
 
 # Ajusta una distribución normal
-mu, std = norm.fit(df['range_norm'])
+mu, std = norm.fit(df['sill_norm'])
 
 # Crea el histograma
-plt.hist(df['range_norm'], bins=30, density=True, color='lightblue', alpha=0.6)
+plt.hist(df['sill_norm'], bins=30, density=True, color='lightblue', alpha=0.6)
 
 # Crea un rango de valores x para la función de densidad de probabilidad
-x = np.linspace(df['range_norm'].min(), df['range_norm'].max(), 100)
+x = np.linspace(df['sill_norm'].min(), df['sill_norm'].max(), 100)
 
 # Calcula y dibuja la función de densidad de probabilidad
 p = norm.pdf(x, mu, std)
 plt.plot(x, p, 'k', linewidth=2)
 
 # Etiqueta los ejes
-plt.xlabel('Range (normalized)')
+plt.xlabel('sill (normalized)')
 plt.ylabel('Density')
 
 plt.show()
@@ -56,10 +56,10 @@ print('Desviación estándar (std):', std)
 Residuos
 """
 # Calcula los valores ajustados
-df['fitted'] = norm.pdf(df['range_norm'], mu, std)
+df['fitted'] = norm.pdf(df['sill_norm'], mu, std)
 
 # Calcula los residuos
-df['residuals'] = df['range_norm'] - df['fitted']
+df['residuals'] = df['sill_norm'] - df['fitted']
 
 # Crea un histograma de los residuos
 plt.hist(df['residuals'], bins=30, density=True, color='lightblue', alpha=0.6)
@@ -78,14 +78,14 @@ plt.show()
 #------------------------------------------------------------
 
 """ # Ajusta una distribución beta
-alpha, beta_, loc, scale = beta.fit(df['range'])
-D_beta, p_beta = kstest(df['range'], 'beta', args=(alpha, beta_, loc, scale))
-chisq_beta, p_chi_beta = chisquare(df['range'])
+alpha, beta_, loc, scale = beta.fit(df['sill'])
+D_beta, p_beta = kstest(df['sill'], 'beta', args=(alpha, beta_, loc, scale))
+chisq_beta, p_chi_beta = chisquare(df['sill'])
 
 # Ajusta una distribución gamma
-alpha, loc, scale = gamma.fit(df['range'])
-D_gamma, p_gamma = kstest(df['range'], 'gamma', args=(alpha, loc, scale))
-chisq_gamma, p_chi_gamma = chisquare(df['range'])
+alpha, loc, scale = gamma.fit(df['sill'])
+D_gamma, p_gamma = kstest(df['sill'], 'gamma', args=(alpha, loc, scale))
+chisq_gamma, p_chi_gamma = chisquare(df['sill'])
  """
 
 # Tests de bondad

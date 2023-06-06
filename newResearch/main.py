@@ -5,13 +5,14 @@ from scipy.spatial.distance import pdist, squareform
 from scipy.optimize import curve_fit
 absPath = 'F:/EscritorioPC/BayesianKriging/TFG/'
 
-df = pd.read_csv(absPath + 'datafiles/vel_interpolada_DEM_ordenada.dat', sep='\s+', names=['x', 'y', 'speed'])
+df = pd.read_csv(absPath + 'datafiles/vel_recortada_blanked.dat', sep='\s+', names=['x', 'y', 'speed'])
 df = df.dropna()
 
 with open(f'{absPath}ranges.dat', 'w') as rangesFile:
     with open(f'{absPath}sills.dat', 'w') as sillsFile:
         for i in range(1000):
             df_sample = df.sample(n=1000)
+            #print(df_sample)
 
             '''
             Se emplea la siguiente fórmula para calcular el variograma experimental:
@@ -46,11 +47,12 @@ with open(f'{absPath}ranges.dat', 'w') as rangesFile:
             def variograma_esferico(h, nugget, sill, range_):
                 # Para h < rango, usa el modelo esférico
                 # Para h >= rango, la semivarianza es constante (= sill)
+                nugget = 50
                 return np.where(h < range_, nugget + sill * (1.5 * h / range_ - 0.5 * (h / range_) ** 3), nugget + sill)
 
             # variogram params
-            h = 20000
-            bin_width = 10
+            h = 8000
+            bin_width = 300
 
             # Calcula el variograma experimental
             distances, semivariances = variograma_experimental(h, bin_width, df_sample['x'], df_sample['y'], df_sample['speed'])
