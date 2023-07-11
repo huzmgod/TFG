@@ -419,9 +419,10 @@ def fixedResidue2Kriging():
                         currentKrigData.append(data)
                 currentKrigData = np.array(currentKrigData)
 
+                #TODO: check how [xCoord, yCoord] is passed to Kriging()
                 interpolate = kg.Kriging().ordinary(currentKrigData, [xCoord, yCoord])
 
-                residual = valueRes - interpolate
+                residual = valueRes - interpolate[2]
                 residuals.append(residual)
             with open (f'crossValidationResidues', 'w') as outputFile:
                 for i, _ in enumerate(residuals):
