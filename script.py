@@ -11,10 +11,54 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import sys
+from sympy import *
+from scipy import integrate
+from math import *
+import numpy as np
+import matplotlib.pyplot as plt
 
 '''
     Write pykrige installation path using the following example to avoid pykrige problems, where USER is your system username
 '''
+
+##########################################################################################
+############################       ORDINARY KRIGING       ################################
+##########################################################################################
+
+
+class CustomOrdinaryKriging(OrdinaryKriging):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.variogram_model = 'custom'
+        self.variogram_function = self.custom_variogram_function
+
+    def custom_variogram_function(self, lag, params):
+        mus = 447.969
+        mur = 5594.0
+        sigmas = 82.466
+        sigmar = 501.552
+        c0 = 0.0
+
+        int1 = lambda s: exp(-(s-mus)**2/(2.0*sigmas**2))
+        int2 = lambda r: exp(-(r-mur)**2/(2.0*sigmar**2))
+        int3 = lambda s: s*exp(-(s-mus)**2/(2.0*sigmas**2))
+        int4 = lambda r: exp(-(r-mur)**2/(2.0*sigmar**2))/r
+        int5 = lambda r: exp(-(r-mur)**2/(2.0*sigmar**2))/r**3
+
+        integral1 = integrate.quad(int1, 0, 100000)
+        integral2 = integrate.quad(int2, 0, 1000000)
+        integral3 = integrate.quad(int3, 0, 1000000)
+        integral4 = integrate.quad(int4, 0, 1000000)
+        integral5 = integrate.quad(int5, 0, 10000)
+
+        gamma = np.zeros_like(lag)  # initialize gamma to be the same shape as lag
+
+        mask = (lag < mur)
+        gamma[mask] = (1/(2*pi*sigmas*sigmar))*(c0*integral1[0]*integral2[0]+integral3[0]*((3*lag[mask]/2)*integral4[0]-(lag[mask]**3/2)*integral5[0]))
+        gamma[~mask] = (1/(2*pi*sigmas*sigmar))*(c0*integral1[0]*integral2[0]+integral3[0]*integral2[0])
+
+        return gamma
+
 
 ##########################################################################################
 ###############################       CONSTANTS       ####################################
@@ -1066,7 +1110,8 @@ def fixedResidue2Kriging():
     into the whole DEM.
     Right after, we add the interpolated residues to the prior speed values to get the final speed values.
     '''
-    monthlySpeedValues = np.loadtxt('datafiles/vel_darek_mensuales_30.4375_normalized.dat')
+    monthlySpeedValues = np.loadtxt(
+        'datafiles/vel_darek_mensuales_30.4375_normalized.dat')
     priorSpeedValues = np.loadtxt('datafiles/vel_interpolada_DEM_ordenada.dat')
     speedValues = np.zeros(priorSpeedValues.shape)
 
@@ -1093,8 +1138,8 @@ def fixedResidue2Kriging():
                 if (np.isnan(value)):
                     residues[monthKey-1][j] = "NaN"
                 else:
-                    residues[monthKey-1][j] = value - interpolateDEMSpeedsIntoPoint(positions[j][0], positions[j][1], \
-                     f"speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey-1)]}_2plot.dat")
+                    residues[monthKey-1][j] = value - interpolateDEMSpeedsIntoPoint(positions[j][0], positions[j][1],
+                                                                                    f"speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey-1)]}_2plot.dat")
 
     def ordinaryKriging(positions, residues, monthKey):
 
@@ -1122,11 +1167,21 @@ def fixedResidue2Kriging():
                 krigData.append(data)
             krigData = np.array(krigData)
 
-            OK = OrdinaryKriging(
+            """ OK = OrdinaryKriging(
                 krigData[:, 0],
                 krigData[:, 1],
                 krigData[:, 2],
                 variogram_model="spherical",
+                nlags=nlags,
+                verbose=False,
+                enable_plotting=plot,
+                exact_values=False,
+                pseudo_inv=True
+            ) """
+            OK = CustomOrdinaryKriging(
+                krigData[:, 0],
+                krigData[:, 1],
+                krigData[:, 2],
                 nlags=nlags,
                 verbose=False,
                 enable_plotting=plot,
@@ -1166,7 +1221,6 @@ def fixedResidue2Kriging():
                             currentX += GRID_DIST
                         currentY -= GRID_DIST
 
-
     def bayesianKriging(monthKey):
         ######## BAYESIAN KRIGING (RESIDUES) ########
         with open(f'speedsAfterKrig/fixedResidues2/output_residuos_{calendar[str(monthKey)]}_2plot.dat', 'r') as kriggedResidues:
@@ -1175,15 +1229,18 @@ def fixedResidue2Kriging():
                 for i, row in enumerate(speedValues):
                     speedValues[i][0] = priorSpeedValues[i][0]
                     speedValues[i][1] = priorSpeedValues[i][1]
-                    speedValues[i][2] = priorSpeedValues[i][2]/12 + kriggedResidues[i][2]
+                    speedValues[i][2] = priorSpeedValues[i][2] / \
+                        12 + kriggedResidues[i][2]
                 np.savetxt(
                     f'speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey)]}_2plot.dat', speedValues, fmt=['%.1f', '%.1f', '%.15f'])
             else:
-                priorValues = np.loadtxt(f"speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey-1)]}_2plot.dat")
+                priorValues = np.loadtxt(
+                    f"speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey-1)]}_2plot.dat")
                 for i, row in enumerate(speedValues):
                     speedValues[i][0] = priorValues[i][0]
                     speedValues[i][1] = priorValues[i][1]
-                    speedValues[i][2] = priorValues[i][2] + kriggedResidues[i][2]
+                    speedValues[i][2] = priorValues[i][2] + \
+                        kriggedResidues[i][2]
                 np.savetxt(
                     f'speedsAfterKrig/fixedSpeedModules2/output_velocidades_{calendar[str(monthKey)]}_2plot.dat', speedValues, fmt=['%.1f', '%.1f', '%.15f'])
 
@@ -1213,7 +1270,6 @@ def fixedResidue2Kriging():
                 gradientValues[1]/(math.sqrt(gradientValues[0]
                                    ** 2 + gradientValues[1]**2))
         return newPositions
-
 
     # Now we automate the process for the 72 months.
     storedPositions = [[(0, 0) for i in range(16)] for j in range(72)]
@@ -1267,7 +1323,6 @@ def componentSplitter():
                                     f"{speeds[i][0]} {speeds[i][1]} {xSpeed} \n")
                                 ySpeedFile.write(
                                     f"{speeds[i][0]} {speeds[i][1]} {ySpeed} \n")
-
 
 
 def main():
